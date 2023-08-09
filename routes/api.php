@@ -145,6 +145,8 @@ Route::middleware('cors')->group(function () {
     Route::any('/index/outer_chain', 'Api\IndexController@outer_chain');//外链地址
     Route::any('/user/getImLink', ['as'=>'user.SendCode','uses'=>'Api\UserController@getImLink']);//客服入口
     Route::any('/equity_reminder', ['as'=>'user.SendCode','uses'=>'Api\MoneyController@equity_reminder']);//客服入口
+    Route::any('/user/community', 'Api\UserController@community');//社区
+
 
     // Route::any('/index/grpAct/getRedPacket',['as'=>'wap.index','uses'=>'Api\IndexController@get_red_packet']);//领取红包
     // Route::any('/index/grpAct/myRedPacket',['as'=>'wap.index','uses'=>'Api\IndexController@my_red_packet_list']);//我的红包领取记录
