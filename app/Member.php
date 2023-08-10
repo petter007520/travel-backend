@@ -13,7 +13,8 @@ class Member extends Model
     protected $primaryKey="id";
     public $timestamps=true;
     protected $guarded=[];
-    protected $fillable = ['username','password','paypwd','mobile','email','logintime','lognum','state','inviter','ip','amount','realname','level','address','qq','question','answer','ismobile','card','isquestion','isbank','bankname','bankrealname','bankcode','bankaddress','is_dongjie','ttop_uid','top_uid','invicode','picImg','reg_from','lastqiandao','mtype','integral','luckdraws','activation','glevel'];
+    protected $fillable = ['username','password','paypwd','mobile','email','logintime','lognum','state','inviter','ip','amount','realname','level','address','qq','question','answer','ismobile','card','isquestion','isbank','bankname','bankrealname','bankcode','bankaddress','is_dongjie','ttop_uid','top_uid','invicode','picImg','reg_from','lastqiandao','mtype','integral','luckdraws','activation','glevel',
+        'region','status','left_amount','right_amount','left_blance','right_blance','collision_amount','collision_amount_finsh'];
     protected $dates = ['created_at', 'updated_at'];
     protected $treeuid=[];
     protected $treelv=[];
