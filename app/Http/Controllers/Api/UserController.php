@@ -2,43 +2,34 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Auth;
 use App\Bigtree;
-use App\Category;
 use App\Channel;
 use App\Http\Controllers\Controller;
+use App\Jobs\CollisionReward;
+use App\Jobs\SendEmail;
 use App\Member;
-use App\Membergrouplevel;
-use APP\Moneylog;
+use App\Membercurrencys;
 use App\Memberlevel;
 use App\Membermsg;
 use App\Memberphone;
+use App\membersubsidy;
 use App\Memberticheng;
 use App\Order;
-use App\Signlog;
 use App\Product;
 use App\Productbuy;
 use App\Stproductbuy;
-use App\Membercurrencys;
-use App\statistics;
 use App\TreeProduct;
 use App\TreeProductbuy;
 use Carbon\Carbon;
-use App\Admin;
-use App\membersubsidy;
-use App\Ad;
-use App\Site;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Facades\Image;
 use Session;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\App;
 
 class UserController extends Controller
 {
@@ -2047,6 +2038,9 @@ class UserController extends Controller
                     }
                 }
 
+                // 异步处理双区对碰奖励
+                dispatch(new CollisionReward($Nowmember, $integrals, $product));;
+
                 $glevellist = DB::table("membergrouplevel")->orderBy('id', 'ASC')->get()->toArray(); //团队级别
                 //团队购买累计
                 $topid = $Nowmember->top_uid;
@@ -2075,7 +2069,7 @@ class UserController extends Controller
 
                 if ($topid != 0) {
                     $topmemeber1 = Member::find($topid);
-                    for ($i = 0; $i < 200; $i++) {
+                    for ($i = 0; $i < 100; $i++) {
                         $topmemeber = Member::find($topid);
                         if (!empty($topmemeber)) {
                             $topmemeber->increment('allxf_fee', $integrals);
@@ -2083,60 +2077,6 @@ class UserController extends Controller
                             if ($topid == $Nowmember->top_uid) {
                                 $topmemeber->increment('zt_sum_fee', $integrals);
                             }
-                            //双区 对碰规则 1 .存在大区 2.小区和大区对碰
-                            if ($region == 1) {
-                                //左区业绩增加
-                                $topmemeber->increment('left_amount', $integrals);
-                                $topmemeber->increment('left_blance', $integrals);
-
-                                //左区的金额小于右区的金额 产生对碰
-                                if ($topmemeber->left_blance < $topmemeber->right_blance) {
-                                    //对碰金额 返给上级
-                                    $collision_amount = $integrals * 0.1;
-                                    $topmemeber->increment('ktx_amount', $collision_amount);
-                                    $log = [
-                                        "userid" => $topmemeber->id,
-                                        "username" => $Member->username,
-                                        "money" => $collision_amount,
-                                        "notice" => "下线(" . $this->Member->username . ")购买(" . $product->title . ")对碰奖励",
-                                        "type" => "对碰奖励",
-                                        "status" => "+",
-                                        "yuanamount" => max($topmemeber->ktx_amount - $collision_amount, 0),
-                                        "houamount" => $topmemeber->ktx_amount,
-                                        "ip" => \Request::getClientIp(),
-                                    ];
-                                    \App\Moneylog::AddLog($log);
-                                    $topmemeber->increment('collision_amount_finsh', $collision_amount);
-                                    $topmemeber->decrement('right_blance', $integrals);
-                                }
-                            } else if ($region == 2) {
-                                //右区业绩增加
-                                $topmemeber->increment('right_amount', $integrals);
-                                $topmemeber->increment('right_blance', $integrals);
-
-                                //右区的金额小于左区的金额 产生对碰
-                                if ($topmemeber->right_blance < $topmemeber->left_blance) {
-                                    //对碰金额 返给上级
-                                    $collision_amount = $integrals * 0.1;
-                                    $topmemeber->increment('ktx_amount', $collision_amount);
-                                    $log = [
-                                        "userid" => $topmemeber->id,
-                                        "username" => $Member->username,
-                                        "money" => $collision_amount,
-                                        "notice" => "下线(" . $this->Member->username . ")购买(" . $product->title . ")对碰奖励",
-                                        "type" => "对碰奖励",
-                                        "status" => "+",
-                                        "yuanamount" => max($topmemeber->ktx_amount - $collision_amount, 0),
-                                        "houamount" => $topmemeber->ktx_amount,
-                                        "ip" => \Request::getClientIp(),
-                                    ];
-                                    \App\Moneylog::AddLog($log);
-                                    $topmemeber->decrement('left_blance', $integrals);
-                                    $topmemeber->increment('collision_amount_finsh', $collision_amount);
-                                }
-                            }
-
-
                             /// 校验团队等级
                             $topmemeber1 = $topmemeber;
                             $gNolevel = DB::table("membergrouplevel")->find($topmemeber1->glevel); //会员团队级别
@@ -2163,8 +2103,6 @@ class UserController extends Controller
                         }
                     }
                 }
-
-                //双区
 
 
             }

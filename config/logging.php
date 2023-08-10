@@ -89,52 +89,58 @@ return [
             'driver' => 'errorlog',
             'level' => 'debug',
         ],
-        
+
         'pay' => [
             'driver' => 'daily',
             'path' => storage_path('logs/pay/pay.log'),
             'level' => 'debug',
         ],
-        
+
         'adminlog' => [
             'driver' => 'daily',
             'path' => storage_path('logs/amdin/admin.log'),
             'level' => 'debug',
         ],
-        
+
         'withdrawal'=>[
             'driver' => 'daily',
             'path' => storage_path('logs/withdrawal/withdrawal.log'),
             'level' => 'debug',
         ],
-        
+
         'buy'=>[
             'driver' => 'daily',
             'path' => storage_path('logs/buy/buy.log'),
             'level' => 'debug',
         ],
-        
+
         'reg'=>[
             'driver' => 'daily',
             'path' => storage_path('logs/reg/reg.log'),
             'level' => 'debug',
         ],
-        
+
         'automatic'=>[
             'driver' => 'daily',
             'path' => storage_path('logs/automatic/automatic.log'),
             'level' => 'debug',
         ],
-        
+
         'pf'=>[
             'driver' => 'daily',
             'path' => storage_path('logs/pf/pf.log'),
             'level' => 'debug',
         ],
-        
+
         'recharge'=>[
             'driver' => 'daily',
             'path' => storage_path('logs/recharge/recharge.log'),
+            'level' => 'debug',
+        ],
+
+        'collision_reward'=>[
+            'driver' => 'daily',
+            'path' => storage_path('logs/collision_reward/cr.log'),
             'level' => 'debug',
         ],
     ],

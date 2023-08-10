@@ -80,7 +80,6 @@ class PublicController
 
     public function login(Request $request)
     {
-
         if ($request->username == '') {
             return response()->json(["status" => 0, "msg" => "用户帐号不能为空"]);
         }
