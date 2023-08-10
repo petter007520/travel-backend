@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,6 +37,7 @@ Route::middleware('cors')->group(function () {
 
 	/****注册登录模块****/
 	Route::any('/login', 'Api\PublicController@login');//登录页面
+	Route::any('/loginout', 'Api\PublicController@loginout');//退出登录
 	Route::any('/register', 'Api\PublicController@register');//注册页面
     Route::any('/forget','Api\PublicController@forget')->middleware('throttle:20,1');//忘记界面
 	Route::any('/captcha_img', 'Api\PublicController@captcha');//图文验证码

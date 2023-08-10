@@ -45,12 +45,8 @@ class UserController extends Controller
     public $Template='wap';
     public function __construct(Request $request)
     {
-
-        // $this->Template=env("WapTemplate");
         $this->middleware(function ($request, $next) {
-
             $lastsession = $request->lastsession;
-
             if($lastsession){
                 $Member = Member::where("lastsession",$request->lastsession)->first();
                 if(!$Member){
@@ -61,9 +57,7 @@ class UserController extends Controller
                     $request->session()->put('Member',$Member, 120);
                 }
             }
-
             $UserId =$request->session()->get('UserId');
-
             if($UserId<1){
                 return response()->json(["status"=>-1,"msg"=>"请先登录!"]);
             }else{
@@ -77,56 +71,41 @@ class UserController extends Controller
             }
             return $next($request);
         });
-
-
         /**网站缓存功能生成**/
-
         if(!Cache::has('setings')){
             $setings=DB::table("setings")->get();
-
             if($setings){
                 $seting_cachetime=DB::table("setings")->where("keyname","=","cachetime")->first();
-
                 if($seting_cachetime){
                     $this->cachetime=$seting_cachetime->value;
                     Cache::forever($seting_cachetime->keyname, $seting_cachetime->value);
                 }
-
                 foreach($setings as $sv){
                     Cache::forever($sv->keyname, $sv->value);
                 }
                 Cache::forever("setings", $setings);
             }
-
         }
-
         $this->cachetime=Cache::get('cachetime');
-
         if(Cache::has('memberlevel.list')){
             $memberlevel=Cache::get('memberlevel.list');
         }else{
             $memberlevel= DB::table("memberlevel")->orderBy("id","asc")->get();
             Cache::get('memberlevel.list',$memberlevel,Cache::get("cachetime"));
         }
-
         $memberlevelName=[];
         foreach($memberlevel as $item){
             $memberlevelName[$item->id]=$item->name;
         }
-
         $this->memberlevelName=$memberlevelName;
-
         $Products= Product::get();
         foreach ($Products as $Product){
             $this->Products[$Product->id]=$Product;
         }
-
-
     }
 
     /***会员中心***/
     public function index(Request $request){
-
         $UserId =$request->session()->get('UserId');
         $data['id'] = $UserId;
         $data['nickname'] = $this->Member->nickname;
@@ -151,9 +130,7 @@ class UserController extends Controller
         $data['lx_qd'] = DB::table("setings")->where('keyname','lx_qd')->value('value');//抽奖次数
         $data['gm_jj_num'] = DB::table("setings")->where('keyname','gm_jj_num')->value('value');//抽奖次数
         $data['dashu_nl'] = DB::table("setings")->where('keyname','dashu_nl')->value('value');//大树能量基本数
-        //yq_xiazai
         $data['yq_xiazai'] = DB::table("setings")->where('keyname','yq_xiazai')->value('value');//抽奖次数
-      //  $memberlevel= DB::table("memberlevel")->where("id",$this->Member->level)->get();
         $memberlevel= DB::table("memberlevel")->find($this->Member->level);
         if(empty($memberlevel)){
             $data['levelname'] = '普通会员';
@@ -203,29 +180,12 @@ class UserController extends Controller
         //救助金
         $fund_balance = DB::table('moneylog')->where(['moneylog_userid'=>$UserId,'moneylog_type'=>'项目救助金'])->sum('moneylog_money');
         $data['fund_balance'] = number_format($fund_balance,'2');
-        //货币
-        $zxj = 0;
-        $membercurrencys = DB::table('membercurrencys')->where('userid',$UserId)->get();
-        if($membercurrencys){
-            // $Products= Product::get();
-            // $p = [];
-            // foreach ($Products as $Product){
-            //     $p[$Product->id]=$Product;
-            // }
-            // foreach ($membercurrencys as $v){
-            //     $zxj1 = $num * $p[$Product->id]->fxj;
-            //     $zxj += $zxj1;
-            // }
-        }
-
-      //  $data['all_amount'] = sprintf("%.1f",$my_all_amount1 + $this->Member->amount + $money_total +$fund_balance +$zxj);//总资产 + 可提现金额 +股权收益+integral
 
         $memberrecharge = DB::table('memberrecharge')->where(['userid'=>$UserId,'status'=>1])->sum('amount');
         $data['all_amount'] = sprintf("%.1f",$my_all_amount1 + $this->Member->amount  + $this->Member->ktx_amount + $this->Member->rw_amount);//总资产 + 可提现金额 +股权收益+integral
         $data['xt_amount'] = sprintf("%.1f",$my_all_amount1 +$money_total + $money_totalzc);//总资产+不可提现
         $memberidentity = DB::table("memberidentity")
             ->select('status')
-            // ->select('idnumber','realname','facade_img','revolt_img','status')
             ->where(['userid'=>$UserId])->first();
         if($memberidentity){//-1:未认证  0：审核中   1：已认证
             // $data['card'] = \App\Member::half_replace($memberidentity->idnumber);
@@ -235,8 +195,6 @@ class UserController extends Controller
             $data['status'] = $memberidentity->status;
         }else{
             $data['status'] = -1;
-            // $data['card'] = '';
-            // $data['realname'] = '';
         }
 
         // $data['all_mobile'] = $this->Member->username;
@@ -265,38 +223,28 @@ class UserController extends Controller
 
     /****我的资料***/
     public function my(Request $request){
-
         $UserId = $request->session()->get('UserId');
-
         $data = DB::table("member")->find($UserId,['id','nickname','picImg','gender','mobile']);
         $data->mobile = \App\Member::DecryptPassWord($data->mobile);
         $data->version = '1.0.1';
-
         return response()->json(['status'=>1,'data'=>$data]);
-
     }
 
     /***我的资料修改***/
     public function myedit(Request $request){
-
            $UserId =$request->session()->get('UserId');
-
            $EditMember= Member::where("id",$UserId)->first();
             $mobile = $EditMember->username;
            if($EditMember){
-
                $i=[];
-
                if($request->nickname!=''){
                    $EditMember->nickname=trim($request->nickname);
                    $i[]='nickname';
                }
-
                if($request->gender!=''){
                    $EditMember->gender=trim($request->gender);
                    $i[]='gender';
                }
-
                if($request->picImg!=''){
                    $EditMember->picImg=trim($request->picImg);
                    $i[]='picImg';
@@ -333,8 +281,6 @@ class UserController extends Controller
                   $EditMember->password = \App\Member::EncryptPassWord(trim($request->new_pwd));
                   $i[]='new_pwd';
               }
-
-                // if($request->old_paypwd!='' && $request->new_paypwd!=''){
                 if($request->new_paypwd!=''){
 
                 //   $paypwd = \App\Member::DecryptPassWord($EditMember->paypwd);
@@ -1009,82 +955,8 @@ class UserController extends Controller
                 default:
             }
             $v->date_time = strtotime($v->updated_at);
-
-            // if($v->moneylog_type=='加入项目,余额付款'){
-            //     $v->type = '买入';
-            //     $v->type_status = 1;
-            //     $v->pay_type = '余额';
-            // }else if($v->moneylog_type=='赠送项目'){
-            //     $v->type = '赠送项目';
-            //     $v->type_status = 1;
-            //     $v->pay_type = '系统赠送';
-            // }else if($v->moneylog_type=='加入项目,银行卡付款'){
-            //     $v->type = '买入';
-            //     $v->type_status = 1;
-            //     $v->pay_type = '银行卡';
-            // }else if($v->moneylog_type=='项目分红'){
-            //     $v->type = '收益';
-            //     $v->type_status = 2;
-            // }else if($v->moneylog_type=='下线购买分成'){
-            //     $result = array();
-            //     preg_match_all("/(?:\[)(.*)(?:\])/i",$v->moneylog_notice, $result);
-            //     $tel1 = $result[1][0];
-            //     $tel2 = substr_replace($tel1, '****', 3,6);
-            //     $v->moneylog_notice = str_replace($tel1,$tel2,$v->moneylog_notice);
-            //     $v->type = '收益';
-            //     $v->type_status = 2;
-            // }else if($v->moneylog_type=='项目本金返款'){
-            //     $v->type = '赎回';
-            //     $v->type_status = 3;
-            // }else if($v->moneylog_type=='项目本金及分红返款'){
-            //     $v->type = '收益赎回';
-            //     $v->type_status = 3;
-            // }else if($v->moneylog_type=='提款'){
-            //     $v->type = '提款失败';
-            //     $v->type_status = 4;
-            //     if($v->moneylog_status=='-'){
-            //         $v->type = '提款申请';
-            //         $v->moneylog_money='-'.$v->moneylog_money;
-            //         $bank = DB::table("memberwithdrawal")
-            //         ->select('bankid')
-            //         ->where("userid",$UserId)
-            //         ->where("id",$v->withdrawal_id)
-            //         ->first();
-            //         if($bank){
-            //             $v->bankInfo = DB::table('memberbank')->select('bankname','bankrealname','bankcode','bankaddress','type')->where('id',$bank->bankid)->first();
-            //         }
-            //     }
-            // }else if($v->moneylog_type=='提款成功'){
-            //     $v->type = '提款成功';
-            //     $v->type_status = 4;
-            //     $bank = DB::table("memberwithdrawal")
-            //         ->select('bankid')
-            //         ->where("userid",$UserId)
-            //         ->where("id",$v->withdrawal_id)
-            //         ->first();
-            //     if($bank){
-            //         $v->bankInfo = DB::table('memberbank')->select('bankname','bankrealname','bankcode','bankaddress','type')->where('id',$bank->bankid)->first();
-            //     }
-            // }else if($v->moneylog_type=='手续费'){
-            //     $v->type = '云币';//前端用这个判断是否显示单位，云币
-            //     $v->type_status = 5;
-            //     $v->moneylog_money = '-'.$v->moneylog_money;
-            // }else if($v->moneylog_type=='货币转出'){
-            //     $v->type = '转出';
-            //     $v->type_status = 6;
-            //      $v->moneylog_money = '-'.$v->moneylog_money;
-            // }else if($v->moneylog_type=='货币转入'){
-            //     $v->type = '转入';
-            //     $v->type_status = 7;
-            // }else if($v->moneylog_type=='充值'){
-            //     $v->type = '充值';
-            //     $v->type_status = 8;
-            // }
-
         }
-
         return response()->json(['status'=>1,'data'=>$data]);
-
     }
 
     /****我的明细***/
@@ -1095,19 +967,15 @@ class UserController extends Controller
         if(!$category_id){
             return response()->json(["status"=>0,"msg"=>"参数不能为空"]);
         }
-
-
-            $data = DB::table("moneylog as ml")
-                ->leftjoin('products as p','p.id', '=', 'ml.product_id')
-                ->select('ml.id','ml.moneylog_money','ml.product_title','ml.moneylog_status','ml.moneylog_type',
-                    'ml.moneylog_notice','ml.bank_id','ml.withdrawal_id','ml.created_at','ml.product_title','p.title')
-                ->where('ml.moneylog_userid',$UserId)
-                ->where('ml.category_id',$category_id)
-                ->where('ml.moneylog_type','<>','积分奖励')
-                ->where('ml.moneylog_type','<>','商品购买')
-                ->orderBy("ml.id","desc")->paginate($pageSize);
-
-
+        $data = DB::table("moneylog as ml")
+            ->leftjoin('products as p','p.id', '=', 'ml.product_id')
+            ->select('ml.id','ml.moneylog_money','ml.product_title','ml.moneylog_status','ml.moneylog_type',
+                'ml.moneylog_notice','ml.bank_id','ml.withdrawal_id','ml.created_at','ml.product_title','p.title')
+            ->where('ml.moneylog_userid',$UserId)
+            ->where('ml.category_id',$category_id)
+            ->where('ml.moneylog_type','<>','积分奖励')
+            ->where('ml.moneylog_type','<>','商品购买')
+            ->orderBy("ml.id","desc")->paginate($pageSize);
 
         foreach($data as $v){
             if($v->moneylog_type=='加入项目,余额付款'){
@@ -1179,48 +1047,7 @@ class UserController extends Controller
         $data['list'] = $top_list;
         $data['lv1_count'] = $lv1_count;
         $data['lv2_count'] = $lv2_count;
-
-        // $data = [
-        //         //   'myteam_count'=>count($top_list1),
-        //           'top_list1'=>$top_list1,
-        //         ];
-
-        // $UserId =$request->session()->get('UserId');
-        // $my_code = DB::table("member")->where("id",$UserId)->value('invicode');//我的邀请码
-
-        // $myteam_count = 0;
-        // //我的一级团队
-        // $top_list1 = DB::table("member")->select('id','nickname','invicode')->where("inviter",$my_code)->where("state","1")->get();
-        // foreach ($top_list1 as $k => $v) {
-        //     // $top_list1[$k]->team_count = DB::table("member")->where("top_uid",$v->id)->orWhere("ttop_uid",$v->id)->where("state","1")->count();
-        //     if(!$v->nickname){
-        //       $top_list1[$k]->nickname = $v->id;
-        //     }
-        //     $top_list1[$k]->team_count = DB::table("member")->where("inviter",$v->invicode)->where("state","1")->count();
-        //     $top_list1[$k]->order_count = DB::table("productbuy")->where("userid",$v->id)->where("status","1")->count();
-        //     $myteam_count++;
-        // }
-
-
-        // $top_list2 = DB::table("member")->select('id','nickname','invicode')->where("inviter",$my_code)->where("state","1")->get();
-        // foreach ($top_list2 as $k => $v) {
-        //     // $top_list2[$k]->team_count = DB::table("member")->where("top_uid",$v->id)->orWhere("ttop_uid",$v->id)->where("state","1")->count();
-        //     if(!$v->nickname){
-        //       $top_list2[$k]->nickname = $v->id;
-        //     }
-        //     $top_list2[$k]->team_count = DB::table("member")->where("inviter",$v->invicode)->where("state","1")->count();
-        //     $top_list2[$k]->order_count = DB::table("productbuy")->where("userid",$v->id)->where("status","1")->count();
-        // }
-
-        // $data = [
-        //   'myteam_count'=>$myteam_count,
-        //   'top_list1'=>$top_list1,
-        //   'top_list2'=>$top_list2,
-        //   'money'=> sprintf("%.2f",$this->Member->amount),
-        // ];
-
         return response()->json(["status"=>1,"data"=>$data]);
-
     }
 
     //团队业绩
@@ -1238,36 +1065,6 @@ class UserController extends Controller
         }
         $where = $level_one = $level_two = $level_three = $level_four = $level_five = [];
         $first_charge_count = $new_user_count = 0;
-        // $membergrade = DB::table('membergrade')->where('pid',$UserId)
-        //     ->where(function($query){
-        //         $query->where('level',1)
-        //             ->orwhere('level',2)
-        //             ->orwhere('level',3)
-        //             ->orwhere('level',4)
-        //             ->orwhere('level',5);
-        //     })
-        //     ->get();
-
-        //     foreach ($membergrade as $v){
-        //         switch ($v->level) {
-        //             case 1:
-        //                 $level_one[] = $v->uid;
-        //                 break;
-        //             case 2:
-        //                 $level_two[] = $v->uid;
-        //                 break;
-        //             case 3:
-        //                 $level_three[] = $v->uid;
-        //                 break;
-        //             case 4:
-        //                 $level_four[] = $v->uid;
-        //                 break;
-        //             case 5:
-        //                 $level_five[] = $v->uid;
-        //                 break;
-        //             }
-        //     }
-        // $all_level_uid = $membergrade->pluck('uid');
 
         //团队余额
         $team_balance = 0;
@@ -1427,165 +1224,22 @@ class UserController extends Controller
         return response()->json(['status'=>1,'data'=>$data]);
     }
 
-    // public function teamReport(Request $request){
-    //     $UserId = $request->session()->get('UserId');
-    //     $Member= Member::find($UserId);
-    //     $pageSize = $request->get('pageSize',10);
-    //     $level_type = $request->get('level',1);
-
-    //     $today_start_data = date("Y-m-d 00:00:00", time());
-    //     $today_end_data = date("Y-m-d 23:59:59", time());
-    //     //时间查询
-    //     // $start_data = $request->get('start_data');//2021-11-16
-    //     // $end_data = $request->get('end_data');
-    //     $where = [];
-    //     // if($start_data != '' || $end_data != ''){
-    //     //     if($start_data == ''){
-    //     //         $start_data = date("Y",time())."-01-01";
-    //     //     }
-    //     //     if($end_data == ''){
-    //     //         $end_data = date("Y-m-d",time());
-    //     //     }
-    //     //     $where = [
-    //     //             ['created_at', '>', $start_data.' 00:00:00'],
-    //     //             ['created_at', '<', $end_data.' 23:59:59'],
-    //     //         ];
-    //     // }
-
-    //     // dump($UserId);
-    //     $level_one = Member::select('id')->where(['top_uid'=>$UserId])->get()->toArray();
-    //     $level_two = Member::select('id')->where(['ttop_uid'=>$UserId])->get()->toArray();
-    //     // $level_three = Member::select('id')->where(['tttop_uid'=>$UserId])->get()->toArray();
-    //     // $all_level_uid = array_merge($level_one,$level_two,$level_three);
-    //     $all_level_uid = array_merge($level_one,$level_two);
-
-    //     //团队余额
-    //     $team_balance = Member::whereIn('id',$all_level_uid)->sum('amount');
-    //     // dump($team_balance);
-    //     //团队流水(购买过的产品总金额)
-    //     $team_capital_flow = DB::table("moneylog")->whereIn('moneylog_type',['加入项目,银行卡付款','加入项目,余额付款'])->whereIn('moneylog_userid',$all_level_uid)->sum('moneylog_money');
-    //     // dump($team_capital_flow);
-    //     //团队总充值
-    //     // $team_total_recharge = DB::table('memberrecharge')->where(['status'=>1,'type'=>'用户充值'])->whereIn('userid',$all_level_uid)->sum('amount');
-    //     $team_total_recharge = DB::table('productbuy')->where(['status'=>1])->whereIn('userid',$all_level_uid)->sum('amount');
-    //     // $team_total_recharge = $team_capital_flow + $team_total_recharge;//要求：充值，应该是包含购买产品的金额
-    //     // dump($team_total_recharge);
-    //     //团队总提现
-    //     $team_total_withdrawal = DB::table('memberwithdrawal')->where(['status'=>1])->whereIn('userid',$all_level_uid)->sum('amount');
-    //     // dump($team_total_withdrawal);
-    //     //团队订单佣金
-    //     $team_order_commission = DB::table("moneylog")->where(['moneylog_type'=>'下线购买分成'])->where('moneylog_userid',$UserId)->sum('moneylog_money');
-    //     // dump($team_order_commission);
-    //     //首充人数
-    //     $first_charge_count = DB::table('memberrecharge')->where(['status'=>1,'type'=>'用户充值'])->whereIn('userid',$all_level_uid)->count();
-    //     //直推人数
-    //     $direct_push_count = count($level_one);
-    //     //团队人数
-    //     $teams_count = count($all_level_uid);
-    //     //新增人数
-    //     $new_user_count = Member::where('created_at','>',$today_start_data)->where('created_at','<',$today_end_data)->whereIn('id',$all_level_uid)->count();
-    //     //活跃人数
-    //     $active_user_count = DB::table("productbuy")
-    //         ->where('updated_at','>',$today_start_data)->where('updated_at','<',$today_end_data)
-    //         ->whereIn('userid',$all_level_uid)
-    //         ->count();
-    //     //一级团队   昵*称  手机***号  推荐人数  总充值  总提现  注册时间
-    //     if($level_type == 1){
-    //         $level_info = Member::select('id','nickname','username','picImg','created_at')->where($where)->whereIn('id',$level_one)->paginate($pageSize);
-    //         foreach ($level_info as $v){
-    //             $v->username = substr_replace($v->username, '****', 3, 4);
-    //             $v->created_data = substr($v->created_at,0,10);
-    //             $v->invitees_count = Member::where(['top_uid'=>$v->id])->count();//受邀人数
-    //             if (preg_match("/[\x7f-\xff]/", $v->nickname)) {
-    //                 $v->nickname = mb_substr($v->nickname, 0, 1, 'utf-8').'****';
-    //             }else{
-    //                 $v->nickname = substr_replace($v->nickname, '****', 3);
-    //             }
-    //             // $user_total_recharge = DB::table('memberrecharge')->where(['status'=>1,'type'=>'用户充值','userid'=>$v->id])->sum('amount');
-    //             // $user_total_buy_money = DB::table("moneylog")->whereIn('moneylog_type',['加入项目,银行卡付款','加入项目,余额付款'])->where('moneylog_userid',$v->id)->sum('moneylog_money');
-    //             // $v->total_recharge = sprintf("%.2f",$user_total_recharge + $user_total_buy_money);
-
-    //             // $v->total_withdrawal = DB::table('memberwithdrawal')->where(['status'=>1,'userid'=>$v->id])->sum('amount');
-    //         }
-    //     }
-
-    //     //二级团队
-    //     if($level_type == 2){
-    //         $level_info = Member::select('id','nickname','username','picImg','created_at')->where($where)->whereIn('id',$level_two)->paginate($pageSize);
-    //         foreach ($level_info as $v){
-    //             $v->username = substr_replace($v->username, '****', 3, 4);
-    //             $v->created_data = substr($v->created_at,0,10);
-    //             $v->invitees_count = Member::where(['top_uid'=>$v->id])->count();//受邀人数
-    //             if (preg_match("/[\x7f-\xff]/", $v->nickname)) {
-    //                 $v->nickname = mb_substr($v->nickname, 0, 1, 'utf-8').'****';
-    //             }else{
-    //                 $v->nickname = substr_replace($v->nickname, '****', 3);
-    //             }
-    //             // $user_total_recharge = DB::table('memberrecharge')->where(['status'=>1,'type'=>'用户充值','userid'=>$v->id])->sum('amount');
-    //             // $user_total_buy_money = DB::table("moneylog")->whereIn('moneylog_type',['加入项目,银行卡付款','加入项目,余额付款'])->where('moneylog_userid',$v->id)->sum('moneylog_money');
-    //             // $v->total_recharge = sprintf("%.2f",$user_total_recharge + $user_total_buy_money);
-
-    //             // $v->total_withdrawal = DB::table('memberwithdrawal')->where(['status'=>1,'userid'=>$v->id])->sum('amount');
-    //         }
-    //     }
-
-    //     // //三级团队
-    //     // if($level_type == 3){
-    //     //     $level_info = Member::select('id','nickname','username','created_at')->where($where)->whereIn('id',$level_three)->paginate($pageSize);
-    //     //     foreach ($level_info as $v){
-    //     //         $v->username = substr_replace($v->username, '****', 3, 4);
-    //     //         $v->created_data = substr($v->created_at,0,10);
-    //     //         $v->invitees_count = Member::where(['top_uid'=>$v->id])->count();//受邀人数
-    //     //         $v->total_recharge = DB::table('memberrecharge')->where(['status'=>1,'type'=>'用户充值','userid'=>$v->id])->sum('amount');
-    //     //         $v->total_withdrawal = DB::table('memberwithdrawal')->where(['status'=>1,'userid'=>$v->id])->sum('amount');
-    //     //     }
-    //     // }
-    //     $data['team_balance'] = sprintf("%.2f",$team_balance);
-    //     $data['team_capital_flow'] = sprintf("%.2f",$team_capital_flow);
-    //     $data['team_total_recharge'] = sprintf("%.2f",$team_total_recharge);
-    //     $data['team_total_withdrawal'] = sprintf("%.2f",$team_total_withdrawal);
-    //     $data['team_order_commission'] = sprintf("%.2f",$team_order_commission);
-    //     $data['first_charge_count'] = $first_charge_count;
-    //     $data['direct_push_count'] = $direct_push_count;
-    //     $data['teams_count'] = $teams_count;
-    //     $data['new_user_count'] = $new_user_count;
-    //     $data['active_user_count'] = $active_user_count;
-
-    //     // $data['level_one_info'] = $level_one_info;
-    //     // $data['level_two_info'] = $level_two_info;
-    //     // $data['level_three_info'] = $level_three_info;
-    //     $data['level_info'] = $level_info;
-
-    //     // $data['start_data'] = $start_data;
-    //     // $data['end_data'] = $end_data;
-
-    //     return response()->json(['status'=>1,'data'=>$data]);
-    // }
-
-
-
-
-
-    /**站内消息管理**/
-
-    /***消息列表***/
+    /**
+     * 站内信
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function msglist(Request $request){
-
         $UserId =$request->session()->get('UserId');
-        $pagesize=6;
         $pagesize=Cache::get("pcpagesize");
-        $where=[];
-
         $list = DB::table("membermsg")
             ->select('username','title','content','status','types','from_name','created_at')
             ->where("userid",$UserId)
             ->orderBy("id","desc")
             ->paginate($pagesize);
-
         foreach ($list as $item){
             $item->date=date("Y.m.d H:i",strtotime($item->created_at));
         }
-
         return response()->json(["status"=>1,"data"=>$list]);
     }
 
@@ -1597,12 +1251,10 @@ class UserController extends Controller
 
         if(Cache::has("msgs." . $UserId)){
             $msgcount=Cache::get("msgs." . $UserId);
-            //$msgcount =$msgcount +$layims;
             return response()->json(["status"=>1,"playSound"=>1,"msgs"=>$msgcount,"layims"=>$layims]);
 
         }else {
             $msgcount = Membermsg::where("userid", $UserId)->where("status", "0")->count();
-            //$msgcount =$msgcount +$layims;
             Cache::put("msgs." . $UserId, $msgcount, 60);
             return response()->json(["status"=>1,"playSound"=>1,"msgs"=>$msgcount,"layims"=>$layims]);
         }
@@ -1627,12 +1279,6 @@ class UserController extends Controller
             ->delete();
         return response()->json(["status"=>1,"msg"=>"已删除"]);
     }
-
-
-
-    /***站内消息结束***/
-
-
 
     /***会员登录日志***/
     public function loginloglist(Request $request){
@@ -1663,87 +1309,50 @@ class UserController extends Controller
 
     /***会员认证中心***/
     public function certification(Request $request){
-
-
             return view($this->Template.".user.certification");
-
-
     }
 
     /***会员手机认证***/
     public function security(Request $request){
-
-
         if($request->ajax()){
             $UserId =$request->session()->get('UserId');
-
            $EditMember= Member::where("id",$UserId)->first();
-
            if($EditMember){
-
                $EditMember->question=$request->question;
                $EditMember->answer=$request->answer;
                $EditMember->isquestion=1;
                //$EditMember->mobile=\App\Member::EncryptPassWord($request->mobile);
                $EditMember->save();
-
-
                return ["status"=>0,"msg"=>"密保设置成功"];
-
            }
         }else {
-
             return view($this->Template.".user.security");
         }
-
-
     }
 
 
 
     /***会员密码修改***/
     public function password(Request $request){
-
-
         if($request->ajax()){
             $UserId =$request->session()->get('UserId');
-
            $EditMember= Member::where("id",$UserId)->first();
-
            if($EditMember){
-
-
              $password= \App\Member::DecryptPassWord($EditMember->password);
-
                if($request->pass!=$password){
                    return ["status"=>1,"msg"=>"输入旧密码错误"];
                }
-
                if($request->newpass!=$request->renewpass){
                    return ["status"=>1,"msg"=>"输入两次密码不至"];
                }
-
                $EditMember->password=\App\Member::EncryptPassWord($request->newpass);
                $EditMember->save();
-
-
                return ["status"=>0,"msg"=>"登录密码修改成功"];
-
-
-
-
            }
         }else {
-
             return view($this->Template.".user.password");
         }
-
-
     }
-
-
-
-
 
     /***会员重置交易密码修改***/
     public function retrieve(Request $request){
@@ -1782,17 +1391,11 @@ class UserController extends Controller
 
     /***会员短信验证码发送***/
     public function SendCode(Request $request){
-
-
         if($request->ajax()){
             $UserId =$request->session()->get('UserId');
-
             $EditMember= Member::where("id",$UserId)->first();
-
             $mobile= \App\Member::DecryptPassWord($EditMember->mobile);
-
             \App\Sendmobile::SendPhone($mobile,$request->action,'');//短信通知
-
             if($request->ajax()){
                 return response()->json([
                     "msg"=>"短信验证码发送成功","status"=>0
@@ -1804,16 +1407,11 @@ class UserController extends Controller
 
     /***会员认证短信验证码发送***/
     public function SendRZCode(Request $request){
-
         if($request->ajax()){
             $UserId =$request->session()->get('UserId');
-
             $EditMember= Member::where("id",$UserId)->first();
-
            // $mobile= \App\Member::DecryptPassWord($EditMember->mobile);
-
             \App\Sendmobile::SendPhone($request->mobile,$request->action,'');//短信通知
-
             if($request->ajax()){
                 return response()->json([
                     "msg"=>"短信验证码发送成功","status"=>0
@@ -1825,15 +1423,11 @@ class UserController extends Controller
 
     /***投资产品***/
     public function products(Request $request){
-
-
         if($request->ajax()){
             $UserId =$request->session()->get('UserId');
-
                 $pagesize=6;
                 $pagesize=Cache::get("pcpagesize");
                 $where=[];
-
                 $list = DB::table("products")
                     ->orderBy("sort","desc")
                     ->paginate($pagesize);
@@ -1841,7 +1435,6 @@ class UserController extends Controller
                     $item->date=date("m-d H:i",strtotime($item->created_at));
                     $item->url=route("product",["id"=>$item->id]);
                 }
-
             return ["status"=>0,"list"=>$list,"pagesize"=>$pagesize];
         }else {
 
@@ -1849,14 +1442,11 @@ class UserController extends Controller
         }
     }
 
-
-
-
-
-
-
-
-    /****项目购买*****/
+    /**
+     * 项目购买-订单创建
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function nowToMoney(Request $request){
         $pay_type = $request->pay_type;//付款方式
         //购买项目
@@ -1871,7 +1461,6 @@ class UserController extends Controller
         // if(empty($checkSM->realname) || empty($checkSM->card)){
         //     return response()->json(["status"=>0,"msg"=>"请先完成实名后进行购买"]);
         // }
-       // var_dump($request->productid);
         if(!$request->productid || !is_numeric($request->productid)){
             return response()->json(["status"=>0,"msg"=>"项目不存在或已下架！！"]);
         }
@@ -2093,25 +1682,6 @@ class UserController extends Controller
 				$source_type = 5;
 				$act = APP::make(\App\Http\Controllers\Api\ActController::class);
 				App::call([$act, 'change_score_by_user_id'], [$user_id, $score, $type, $source_type]);
-			}else{
-				//银行卡付款
-//                $log=[
-//                    "userid"=>$this->Member->id,
-//                    "username"=>$this->Member->username,
-//                    "money"=>$integrals,
-//                    "notice"=>$notice,
-//                    "type"=>"参与项目,银行卡付款",
-//                    "status"=>"-",
-//                    "yuanamount"=>$yuanamount,
-//                    "houamount"=>$Member->amount,
-//                    "ip"=>\Request::getClientIp(),
-//                    "category_id"=>$product->category_id,
-//                    "product_id"=>$product->id,
-//                    "product_title"=>$product->title,
-//                    'num'=>$request->number,
-//                    'moneylog_type_id'=>'2',
-//                ];
-//                \App\Moneylog::AddLog($log);
 			}
 			$sendDay_count = $hkfs == 1?1:$zhouqi;
 			$NewProductbuy= new Productbuy();
@@ -2295,8 +1865,6 @@ class UserController extends Controller
 					if($pay_type == 1 && ($product->fy_type == 3 || $product->fy_type == 1)){
 						$is_return = true;
 					}
-
-
 
 					if ($is_return && $product->category_id!=42) {
                         $Member12 = Member::find($Member->id);

@@ -13,10 +13,10 @@ use App\Product;
 use App\Productbuy;
 use App\Membercurrencys;
 use Carbon\Carbon;
-use DB;
 use App\Admin;
 use App\Ad;
 use App\Site;
+use Illuminate\Support\Facades\DB;
 use Intervention\Image\Facades\Image;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -79,11 +79,9 @@ class PublicController
 
 
     public function login(Request $request){
-
         if($request->username==''){
             return response()->json(["status"=>0,"msg"=>"用户帐号不能为空"]);
         }
-
         $login_type = !empty($request->logintype)?$request->logintype:1;
         if($login_type==1){
             if($request->password==''){
@@ -96,249 +94,239 @@ class PublicController
             $mcode = $request->code;
         }
 
-
-        $Member = Member::where("username",$request->username)
-            ->first();
-    DB::beginTransaction();
-    try{
-        if(!$Member){
-            /**登录日志**/
-            $data['userid']=0;
-            $data['username']=$request->username;
-            $data['memo']="尝试登录(".$request->password.")";
-            $data['status']=0;
-            $data['ip']=$request->getClientIp();
-            $data['created_at']=$data['updated_at']=Carbon::now();
-            DB::table('memberlogs')->insert($data);
-            DB::commit();
-            return response()->json(["status"=>0,"msg"=>"账号或密码错误!"]);
-        }else{
-
-            if($Member->state=='-1' || $Member->state=='0'){
+        $Member = Member::where("username",$request->username)->first();
+        DB::beginTransaction();
+        try{
+            if(!$Member){
                 /**登录日志**/
-                $data['userid']=$Member->id;
-                $data['username']=$Member->username;
-                $data['memo']="帐号禁用中";
+                $data['userid']=0;
+                $data['username']=$request->username;
+                $data['memo']="尝试登录(".$request->password.")";
                 $data['status']=0;
                 $data['ip']=$request->getClientIp();
                 $data['created_at']=$data['updated_at']=Carbon::now();
                 DB::table('memberlogs')->insert($data);
                 DB::commit();
-                return response()->json(["status"=>0,"msg"=>"帐号禁用中"]);
-            }
-
-            if($login_type==1){
-                $password=  \App\Member::DecryptPassWord($Member->password);
-            }
-
-            if(($password==$request->password)){
-
-            //  if($mcode == 8597 && ($sms_code || $sms_code->code == $mcode)){
-
-                $request->session()->put('UserId',$Member->id, 120);
-                $request->session()->put('UserName',$Member->username, 120);
-                $request->session()->put('Member',$Member, 120);
-                if( $request->is_red != 1){
-                    $Member->lastsession = \App\Member::EncryptPassWord(Carbon::now().$Member->id);
-                }
-                // $Member->lastsession = \App\Member::EncryptPassWord(Carbon::now().$Member->id);
-                $Member->logintime=Carbon::now();
-
-				$today_date = date('Y-m-d 00:00:00', time());
-				$yesterday_date = date('Y-m-d 00:00:00', time() - 86400);
-
-				$login_yesterday = DB::table('memberlogs')
-					->where(['userid' => $Member->id])
-					->where('status', '=', 1)
-					->whereBetween('created_at', [$yesterday_date, $today_date])
-					->first();
-
-				$login_today = DB::table('memberlogs')
-					->where(['userid' => $Member->id])
-					->where('status', '=', 1)
-					->where('created_at', '>', $today_date)
-					->first();
-
-
-				if (!$login_today){
-					if ($login_yesterday) {
-						$Member->login_times = $Member->login_times + 1;
-					} else {
-						$Member->login_times = 1;
-					}
-				}
-
-                $Member->save();
-
-                /**登录日志**/
-                $data['userid']=$Member->id;
-                $data['username']=$Member->username;
-                $data['memo']="登录成功";
-                $data['status']=1;
-                $data['ip']=$request->getClientIp();
-                $data['created_at']=$data['updated_at']=Carbon::now();
-                DB::table('memberlogs')->insert($data);
-
-                // //免费赠送产品（只赠送一次）
-                // if($Member->isquestion == 0){
-                //     $free_gift_pid = DB::table('setings')->where('keyname','free_gift_pid')->value('value');
-                //     $free_gift_num = DB::table('setings')->where('keyname','free_gift_num')->value('value');
-                //     if($free_gift_pid >0 && $free_gift_num >0){
-                //         $free_gift_info = DB::table('products')->select('id','category_id','title','qtje','hkfs','shijian')->where(['id'=>$free_gift_pid])->first();
-                //         $has_pb = DB::table('productbuy')->where(['productid'=>$free_gift_pid,'userid'=>$Member->id])->first();
-                //         // dump($free_gift_info);
-                //         // dump($has_pb);
-                //         // exit;
-                //         if($free_gift_info && !$has_pb){
-                //             //赠送总金额
-                //             $free_give_product_money = $free_gift_num * $free_gift_info->qtje;
-
-                //             //判断下一次领取时间
-                //             $hkfs = $free_gift_info->hkfs;
-                //             $zhouqi    = trim($free_gift_info->shijian);//周期
-                //             $sendDay_count = $hkfs == 1?1:$zhouqi;
-                //             //免费赠送的固定120天
-                //             $useritem_time2 = \App\Productbuy::DateAdd("d",120, date('Y-m-d 0:0:0',time()));
-
-                //             $NewProductbuy= new Productbuy();
-                //             $NewProductbuy->userid=$Member->id;
-                //             $NewProductbuy->username=$Member->username;
-                //             $NewProductbuy->productid=$free_gift_pid;
-                //             $NewProductbuy->category_id=$free_gift_info->category_id;
-                //             $NewProductbuy->amount= $free_give_product_money;
-                //             $NewProductbuy->ip= \Request::getClientIp();
-                //             $NewProductbuy->useritem_time = Carbon::now();
-                //             $NewProductbuy->useritem_time2=$useritem_time2;
-                //             $NewProductbuy->reason = "免费赠送产品(".$free_gift_info->title.")";
-                //             $NewProductbuy->sendDay_count=$sendDay_count;
-                //             $NewProductbuy->num = $free_gift_num;//赠送数量
-                //             $NewProductbuy->unit_price = $free_gift_info->qtje;//赠送时单价
-                //             $NewProductbuy->zsje=0;//赠送金额
-                //             $NewProductbuy->zscp_id=0;//
-                //             //固定120天，不设-1
-                //             // $NewProductbuy->gq_order = '-1';
-                //             $NewProductbuy->created_date = date('Y-m-d');
-                //             // $NewProductbuy->order = substr((date('YmdHis').$RegMember->id.$this->get_random_code(6)),0,25);
-                //             $res = $NewProductbuy->save();
-                //             //站内消息
-                //             $msg=[
-                //                 "userid"=>$Member->id,
-                //                 "username"=>$Member->username,
-                //                 "title"=>"免费赠送产品",
-                //                 "content"=>"成功加入项目(".$free_gift_info->title.")",
-                //                 "from_name"=>"系统通知",
-                //                 "types"=>"加入项目",
-                //             ];
-                //             \App\Membermsg::Send($msg);
-                //             //
-                //             $give_log=[
-                //                 "userid"=>$Member->id,
-                //                 "username"=>$Member->username,
-                //                 "money"=> $free_give_product_money,
-                //                 "notice"=>"免费赠送产品(".$free_gift_info->title.")[".$NewProductbuy->id."]",
-                //                 "type"=>"免费赠送项目",
-                //                 "status"=>"+",
-                //                 "yuanamount"=>0,
-                //                 "houamount"=>0,
-                //                 "ip"=>\Request::getClientIp(),
-                //                 "category_id"=>$free_gift_info->category_id,
-                //                 "product_id"=>$free_gift_info->id,
-                //                 "product_title"=>$free_gift_info->title,
-                //             ];
-                //             \App\Moneylog::AddLog($give_log);
-
-                //             DB::table('statistics')->where(['user_id'=>$Member->id])->increment('team_capital_flow',$free_give_product_money);
-                //             //更新赠送状态
-                //             $Member->isquestion = 1;
-                //             $Member->save();
-                //         }
-                //     }
-
-                // }
-                // //免费赠送产品END
-
-                $resdata['userid']=$Member->id;
-                $resdata['nickname']=$Member->nickname;
-                $resdata['gender']=$Member->gender;
-                // $resdata['mobile']=\App\Member::half_replace(\App\Member::DecryptPassWord($Member->mobile));  //手机号
-                $resdata['mobile'] = $resdata['all_mobile']=$Member->username;
-                $resdata['hidden_mobile'] = substr_replace($Member->username, '****', 3,5);
-                $resdata['picImg']=$Member->picImg;
-                $resdata['invicode']=$Member->invicode;
-                $resdata['lastsession']=$Member->lastsession;
-                // $resdata['level']=$Member->level;
-                // $resdata['realname']=$Member->realname;
-                // $resdata['card']=$Member->card;
-                $resdata['im_link'] = DB::table("setings")->where('keyname','im_link')->value('value');//客服链接
-
-                $memberidentity = DB::table("memberidentity")
-                    ->select('idnumber','realname','facade_img','revolt_img','status')
-                    ->where(['userid'=>$Member->id])->first();
-                if($memberidentity){//-1:未认证  0：审核中   1：已认证
-                   // $resdata['card'] = \App\Member::half_replace($memberidentity->idnumber);
-                    $resdata['card'] = $memberidentity->idnumber;
-                    $resdata['realname'] = $memberidentity->realname;
-                    $resdata['facade_img'] = $memberidentity->facade_img;
-                    $resdata['revolt_img'] = $memberidentity->revolt_img;
-                    $resdata['status'] = $memberidentity->status;
-                }else{
-                    $resdata['status'] = -1;
-                    $resdata['card'] = $resdata['realname'] = $resdata['facade_img'] = $resdata['revolt_img'] = '';
-                }
-                DB::commit();
-
-
-				if (!$login_today){
-					$user_id = $Member->id;
-					$score = $Member->login_times * 10;
-					$type = 1;
-					$source_type = $Member->login_times > 1 ? 3 : 4;
-
-					$act = APP::make(\App\Http\Controllers\Api\ActController::class);
-					App::call([$act, 'change_score_by_user_id'], [$user_id, $score, $type, $source_type]);
-				}
-              //  var_dump($resdata);
-
-                return response()->json(["status"=>1,"msg"=>"登录成功","data"=>$resdata]);
-
+                return response()->json(["status"=>0,"msg"=>"账号或密码错误!"]);
             }else{
 
-                if($login_type==1){
-                    $memo = '账号或密码错误';
-                }else{
-                    $memo = '短信验证码错误';
+                if($Member->state=='-1' || $Member->state=='0'){
+                    /**登录日志**/
+                    $data['userid']=$Member->id;
+                    $data['username']=$Member->username;
+                    $data['memo']="帐号禁用中";
+                    $data['status']=0;
+                    $data['ip']=$request->getClientIp();
+                    $data['created_at']=$data['updated_at']=Carbon::now();
+                    DB::table('memberlogs')->insert($data);
+                    DB::commit();
+                    return response()->json(["status"=>0,"msg"=>"帐号禁用中"]);
                 }
 
-                /**登录日志**/
-                $data['userid']=$Member->id;
-                $data['username']=$Member->username;
-                $data['memo']=$memo;
-                $data['status']=0;
-                $data['ip']=$request->getClientIp();
-                $data['created_at']=$data['updated_at']=Carbon::now();
-                DB::table('memberlogs')->insert($data);
-                DB::commit();
-                return response()->json(['msg'=>$memo."，请重新输入",'status'=>"0"]);
+                if($login_type==1){
+                    $password=  \App\Member::DecryptPassWord($Member->password);
+                }
+
+                if(($password==$request->password)){
+
+                //  if($mcode == 8597 && ($sms_code || $sms_code->code == $mcode)){
+
+                    $request->session()->put('UserId',$Member->id, 120);
+                    $request->session()->put('UserName',$Member->username, 120);
+                    $request->session()->put('Member',$Member, 120);
+//                    if( $request->is_red != 1){
+                        $Member->lastsession = \App\Member::EncryptPassWord(Carbon::now().$Member->id);
+//                    }
+                    $Member->logintime=Carbon::now();
+                    $today_date = date('Y-m-d 00:00:00', time());
+                    $yesterday_date = date('Y-m-d 00:00:00', time() - 86400);
+
+                    $login_yesterday = DB::table('memberlogs')
+                        ->where(['userid' => $Member->id])
+                        ->where('status', '=', 1)
+                        ->whereBetween('created_at', [$yesterday_date, $today_date])
+                        ->first();
+
+                    $login_today = DB::table('memberlogs')
+                        ->where(['userid' => $Member->id])
+                        ->where('status', '=', 1)
+                        ->where('created_at', '>', $today_date)
+                        ->first();
+
+
+                    if (!$login_today){
+                        if ($login_yesterday) {
+                            $Member->login_times = $Member->login_times + 1;
+                        } else {
+                            $Member->login_times = 1;
+                        }
+                    }
+                    $Member->save();
+
+                    /**登录日志**/
+                    $data['userid']=$Member->id;
+                    $data['username']=$Member->username;
+                    $data['memo']="登录成功";
+                    $data['status']=1;
+                    $data['ip']=$request->getClientIp();
+                    $data['created_at']=$data['updated_at']=Carbon::now();
+                    DB::table('memberlogs')->insert($data);
+
+                    // //免费赠送产品（只赠送一次）
+                    // if($Member->isquestion == 0){
+                    //     $free_gift_pid = DB::table('setings')->where('keyname','free_gift_pid')->value('value');
+                    //     $free_gift_num = DB::table('setings')->where('keyname','free_gift_num')->value('value');
+                    //     if($free_gift_pid >0 && $free_gift_num >0){
+                    //         $free_gift_info = DB::table('products')->select('id','category_id','title','qtje','hkfs','shijian')->where(['id'=>$free_gift_pid])->first();
+                    //         $has_pb = DB::table('productbuy')->where(['productid'=>$free_gift_pid,'userid'=>$Member->id])->first();
+                    //         // dump($free_gift_info);
+                    //         // dump($has_pb);
+                    //         // exit;
+                    //         if($free_gift_info && !$has_pb){
+                    //             //赠送总金额
+                    //             $free_give_product_money = $free_gift_num * $free_gift_info->qtje;
+
+                    //             //判断下一次领取时间
+                    //             $hkfs = $free_gift_info->hkfs;
+                    //             $zhouqi    = trim($free_gift_info->shijian);//周期
+                    //             $sendDay_count = $hkfs == 1?1:$zhouqi;
+                    //             //免费赠送的固定120天
+                    //             $useritem_time2 = \App\Productbuy::DateAdd("d",120, date('Y-m-d 0:0:0',time()));
+
+                    //             $NewProductbuy= new Productbuy();
+                    //             $NewProductbuy->userid=$Member->id;
+                    //             $NewProductbuy->username=$Member->username;
+                    //             $NewProductbuy->productid=$free_gift_pid;
+                    //             $NewProductbuy->category_id=$free_gift_info->category_id;
+                    //             $NewProductbuy->amount= $free_give_product_money;
+                    //             $NewProductbuy->ip= \Request::getClientIp();
+                    //             $NewProductbuy->useritem_time = Carbon::now();
+                    //             $NewProductbuy->useritem_time2=$useritem_time2;
+                    //             $NewProductbuy->reason = "免费赠送产品(".$free_gift_info->title.")";
+                    //             $NewProductbuy->sendDay_count=$sendDay_count;
+                    //             $NewProductbuy->num = $free_gift_num;//赠送数量
+                    //             $NewProductbuy->unit_price = $free_gift_info->qtje;//赠送时单价
+                    //             $NewProductbuy->zsje=0;//赠送金额
+                    //             $NewProductbuy->zscp_id=0;//
+                    //             //固定120天，不设-1
+                    //             // $NewProductbuy->gq_order = '-1';
+                    //             $NewProductbuy->created_date = date('Y-m-d');
+                    //             // $NewProductbuy->order = substr((date('YmdHis').$RegMember->id.$this->get_random_code(6)),0,25);
+                    //             $res = $NewProductbuy->save();
+                    //             //站内消息
+                    //             $msg=[
+                    //                 "userid"=>$Member->id,
+                    //                 "username"=>$Member->username,
+                    //                 "title"=>"免费赠送产品",
+                    //                 "content"=>"成功加入项目(".$free_gift_info->title.")",
+                    //                 "from_name"=>"系统通知",
+                    //                 "types"=>"加入项目",
+                    //             ];
+                    //             \App\Membermsg::Send($msg);
+                    //             //
+                    //             $give_log=[
+                    //                 "userid"=>$Member->id,
+                    //                 "username"=>$Member->username,
+                    //                 "money"=> $free_give_product_money,
+                    //                 "notice"=>"免费赠送产品(".$free_gift_info->title.")[".$NewProductbuy->id."]",
+                    //                 "type"=>"免费赠送项目",
+                    //                 "status"=>"+",
+                    //                 "yuanamount"=>0,
+                    //                 "houamount"=>0,
+                    //                 "ip"=>\Request::getClientIp(),
+                    //                 "category_id"=>$free_gift_info->category_id,
+                    //                 "product_id"=>$free_gift_info->id,
+                    //                 "product_title"=>$free_gift_info->title,
+                    //             ];
+                    //             \App\Moneylog::AddLog($give_log);
+
+                    //             DB::table('statistics')->where(['user_id'=>$Member->id])->increment('team_capital_flow',$free_give_product_money);
+                    //             //更新赠送状态
+                    //             $Member->isquestion = 1;
+                    //             $Member->save();
+                    //         }
+                    //     }
+
+                    // }
+                    // //免费赠送产品END
+
+                    $resdata['userid']=$Member->id;
+                    $resdata['nickname']=$Member->nickname;
+                    $resdata['gender']=$Member->gender;
+                    // $resdata['mobile']=\App\Member::half_replace(\App\Member::DecryptPassWord($Member->mobile));  //手机号
+                    $resdata['mobile'] = $resdata['all_mobile']=$Member->username;
+                    $resdata['hidden_mobile'] = substr_replace($Member->username, '****', 3,5);
+                    $resdata['picImg']=$Member->picImg;
+                    $resdata['invicode']=$Member->invicode;
+                    $resdata['lastsession']=$Member->lastsession;
+                    // $resdata['level']=$Member->level;
+                    // $resdata['realname']=$Member->realname;
+                    // $resdata['card']=$Member->card;
+                    $resdata['im_link'] = DB::table("setings")->where('keyname','im_link')->value('value');//客服链接
+
+                    $memberidentity = DB::table("memberidentity")
+                        ->select('idnumber','realname','facade_img','revolt_img','status')
+                        ->where(['userid'=>$Member->id])->first();
+                    if($memberidentity){//-1:未认证  0：审核中   1：已认证
+                       // $resdata['card'] = \App\Member::half_replace($memberidentity->idnumber);
+                        $resdata['card'] = $memberidentity->idnumber;
+                        $resdata['realname'] = $memberidentity->realname;
+                        $resdata['facade_img'] = $memberidentity->facade_img;
+                        $resdata['revolt_img'] = $memberidentity->revolt_img;
+                        $resdata['status'] = $memberidentity->status;
+                    }else{
+                        $resdata['status'] = -1;
+                        $resdata['card'] = $resdata['realname'] = $resdata['facade_img'] = $resdata['revolt_img'] = '';
+                    }
+                    DB::commit();
+                    if (!$login_today){
+                        $user_id = $Member->id;
+                        $score = $Member->login_times * 10;
+                        $type = 1;
+                        $source_type = $Member->login_times > 1 ? 3 : 4;
+                        $act = APP::make(\App\Http\Controllers\Api\ActController::class);
+                        App::call([$act, 'change_score_by_user_id'], [$user_id, $score, $type, $source_type]);
+                    }
+                    return response()->json(["status"=>1,"msg"=>"登录成功","data"=>$resdata]);
+
+                }else{
+
+                    if($login_type==1){
+                        $memo = '账号或密码错误';
+                    }else{
+                        $memo = '短信验证码错误';
+                    }
+
+                    /**登录日志**/
+                    $data['userid']=$Member->id;
+                    $data['username']=$Member->username;
+                    $data['memo']=$memo;
+                    $data['status']=0;
+                    $data['ip']=$request->getClientIp();
+                    $data['created_at']=$data['updated_at']=Carbon::now();
+                    DB::table('memberlogs')->insert($data);
+                    DB::commit();
+                    return response()->json(['msg'=>$memo."，请重新输入",'status'=>"0"]);
+                }
             }
+        }catch(\Exception $exception){
+            LogLog::channel('reg')->alert('login:'.$exception->getMessage());
+            DB::rollBack();
+            return ['status'=>0,'msg'=>'提交失败，请重试'];
         }
-       // try{
-    }catch(\Exception $exception){
-        LogLog::channel('reg')->alert('login:'.$exception->getMessage());
-        DB::rollBack();
-        return ['status'=>0,'msg'=>'提交失败，请重试'];
-    }
     }
 
 
     public function loginout(Request $request){
-
-
-        $request->session()->forget('UserId');
-        $request->session()->forget('UserName');
-        $request->session()->forget('Member');
-
+        $lastsession = $request->lastsession;
+        if($lastsession){
+            $Member = Member::where("lastsession",$request->lastsession)->first();
+            if($Member){
+                $Member->lastsession = '';
+                $Member->save();
+            }
+        }
         return response()->json(["status"=>1,"msg"=>"退出成功!"]);
-
     }
 
    public function register(Request $request){
