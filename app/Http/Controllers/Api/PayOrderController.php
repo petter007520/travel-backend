@@ -219,6 +219,8 @@ class PayOrderController extends Controller
             $Nowmember = Member::find($Member->id);
             // 异步处理双区对碰奖励
             dispatch(new CollisionReward($Nowmember, $pro_buy_data->amount, $product));
+            // 可获得对碰奖励金额  | 购买产品,用户激活
+            DB::table("member")->where(['id' => $Member->id])->update(['status'=>1,'collision_amount'=>$pro_buy_data->amount * $product->collision_times]);
             //团队购买累计
             $topid = $Nowmember->top_uid;
             if ($topid != 0) {

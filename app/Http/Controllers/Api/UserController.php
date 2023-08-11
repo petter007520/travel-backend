@@ -38,12 +38,8 @@ class UserController extends Controller
 
     public function __construct(Request $request)
     {
-
-        // $this->Template=env("WapTemplate");
         $this->middleware(function ($request, $next) {
-
             $lastsession = $request->lastsession;
-
             if ($lastsession) {
                 $Member = Member::where("lastsession", $request->lastsession)->first();
                 if (!$Member) {
@@ -54,9 +50,7 @@ class UserController extends Controller
                     $request->session()->put('Member', $Member, 120);
                 }
             }
-
             $UserId = $request->session()->get('UserId');
-
             if ($UserId < 1) {
                 return response()->json(["status" => -1, "msg" => "请先登录!"]);
             } else {
@@ -70,57 +64,43 @@ class UserController extends Controller
             }
             return $next($request);
         });
-
-
         /**网站缓存功能生成**/
-
         if (!Cache::has('setings')) {
             $setings = DB::table("setings")->get();
-
             if ($setings) {
                 $seting_cachetime = DB::table("setings")->where("keyname", "=", "cachetime")->first();
-
                 if ($seting_cachetime) {
                     $this->cachetime = $seting_cachetime->value;
                     Cache::forever($seting_cachetime->keyname, $seting_cachetime->value);
                 }
-
                 foreach ($setings as $sv) {
                     Cache::forever($sv->keyname, $sv->value);
                 }
                 Cache::forever("setings", $setings);
             }
-
         }
 
         $this->cachetime = Cache::get('cachetime');
-
         if (Cache::has('memberlevel.list')) {
             $memberlevel = Cache::get('memberlevel.list');
         } else {
             $memberlevel = DB::table("memberlevel")->orderBy("id", "asc")->get();
             Cache::get('memberlevel.list', $memberlevel, Cache::get("cachetime"));
         }
-
         $memberlevelName = [];
         foreach ($memberlevel as $item) {
             $memberlevelName[$item->id] = $item->name;
         }
-
         $this->memberlevelName = $memberlevelName;
-
         $Products = Product::get();
         foreach ($Products as $Product) {
             $this->Products[$Product->id] = $Product;
         }
-
-
     }
 
     /***会员中心***/
     public function index(Request $request)
     {
-
         $UserId = $request->session()->get('UserId');
         $data['id'] = $UserId;
         $data['nickname'] = $this->Member->nickname;
@@ -139,15 +119,10 @@ class UserController extends Controller
         $data['ulx_qd'] = $Member->lx_qd;   //余额宝总金额
         $data['nl_fee'] = $Member->nl_fee;   //能量钱数
         $data['allzc_num'] = DB::table("setings")->where('keyname', 'zc_num')->value('value');//注册数目
-        $data['one_tree'] = DB::table("setings")->where('keyname', 'zc_num')->value('value');//兑换一个数需要多少人
         $data['yeb_zrw'] = DB::table("setings")->where('keyname', 'yeb_zr')->value('value');//余额宝任务
-        $data['ontree_fee'] = DB::table("setings")->where('keyname', 'ontree_fee')->value('value');//赠送一颗小树需要价格
         $data['lx_qd'] = DB::table("setings")->where('keyname', 'lx_qd')->value('value');//抽奖次数
         $data['gm_jj_num'] = DB::table("setings")->where('keyname', 'gm_jj_num')->value('value');//抽奖次数
-        $data['dashu_nl'] = DB::table("setings")->where('keyname', 'dashu_nl')->value('value');//大树能量基本数
-        //yq_xiazai
         $data['yq_xiazai'] = DB::table("setings")->where('keyname', 'yq_xiazai')->value('value');//抽奖次数
-        //  $memberlevel= DB::table("memberlevel")->where("id",$this->Member->level)->get();
         $memberlevel = DB::table("memberlevel")->find($this->Member->level);
         if (empty($memberlevel)) {
             $data['levelname'] = '普通会员';
@@ -182,9 +157,7 @@ class UserController extends Controller
         $data['rwjj'] = $Member->rw_amount;
         //  $data['nl_fee'] = $Member->nl_fee;
         $data['ljsy'] = number_format($rwjj + $xmfb + $xmfh + $xxgm, '2');
-
         $data['gq_amount'] = number_format($gq_amount, '2');
-
         $data['amount'] = number_format($this->Member->amount, '2');;//可用余额&可提现金额
         $data['alltixian'] = number_format($alltixian, '2');;//可用余额&可提现金额
         $data['ztz'] = number_format($my_all_amount1 + $my_all_amount2, '2');;//可用余额&可提现金额
@@ -197,45 +170,17 @@ class UserController extends Controller
         //救助金
         $fund_balance = DB::table('moneylog')->where(['moneylog_userid' => $UserId, 'moneylog_type' => '项目救助金'])->sum('moneylog_money');
         $data['fund_balance'] = number_format($fund_balance, '2');
-        //货币
-        $zxj = 0;
-        $membercurrencys = DB::table('membercurrencys')->where('userid', $UserId)->get();
-        if ($membercurrencys) {
-            // $Products= Product::get();
-            // $p = [];
-            // foreach ($Products as $Product){
-            //     $p[$Product->id]=$Product;
-            // }
-            // foreach ($membercurrencys as $v){
-            //     $zxj1 = $num * $p[$Product->id]->fxj;
-            //     $zxj += $zxj1;
-            // }
-        }
-
-        //  $data['all_amount'] = sprintf("%.1f",$my_all_amount1 + $this->Member->amount + $money_total +$fund_balance +$zxj);//总资产 + 可提现金额 +股权收益+integral
-
-        $memberrecharge = DB::table('memberrecharge')->where(['userid' => $UserId, 'status' => 1])->sum('amount');
         $data['all_amount'] = sprintf("%.1f", $my_all_amount1 + $this->Member->amount + $this->Member->ktx_amount + $this->Member->rw_amount);//总资产 + 可提现金额 +股权收益+integral
         $data['xt_amount'] = sprintf("%.1f", $my_all_amount1 + $money_total + $money_totalzc);//总资产+不可提现
         $memberidentity = DB::table("memberidentity")
             ->select('status')
-            // ->select('idnumber','realname','facade_img','revolt_img','status')
             ->where(['userid' => $UserId])->first();
         if ($memberidentity) {//-1:未认证  0：审核中   1：已认证
-            // $data['card'] = \App\Member::half_replace($memberidentity->idnumber);
-            // $data['realname'] = $memberidentity->realname;
-            // $data['facade_img'] = $memberidentity->facade_img;
-            // $data['revolt_img'] = $memberidentity->revolt_img;
             $data['status'] = $memberidentity->status;
         } else {
             $data['status'] = -1;
-            // $data['card'] = '';
-            // $data['realname'] = '';
         }
-
-        // $data['all_mobile'] = $this->Member->username;
         $data['hidden_mobile'] = substr_replace($this->Member->username, '****', 3, 5);
-
         return response()->json(['status' => 1, 'data' => $data]);
     }
 
