@@ -133,7 +133,12 @@ class PaymentController extends Controller
                 DB::table('productbuy')
                     ->where(['order'=>$order,'pay_type'=>3,'pay_status'=>0])
                     ->update(['pay_status'=>1,'status'=>1,'pay_order_check_time'=>Carbon::now()]);
-                (new PayOrderController())->third_pay_finish_payment($has_productbuy_order->id);
+                $ret = (new PayOrderController())->third_pay_finish_payment($has_productbuy_order->id);
+                if($ret['status'] == 0){
+                    Log::channel('pay')->alert($ret['msg']);
+                    DB::rollBack();
+                    return ['status'=>0,'msg'=>'提交失败，请重试'];
+                }
                 DB::commit();
             }catch(\Exception $exception){
                 Log::channel('pay')->alert($exception->getMessage());
