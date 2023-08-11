@@ -1233,14 +1233,128 @@ class UserController extends Controller
     /**
      * 社区
      * @param Request $request
-     * @return void
      */
     public function community(Request $request)
     {
         $UserId = $request->session()->get('UserId');
+        $username = $request->get('op','');
+        if(!empty($username)){
+            $op_member = Member::where(['username'=>$username])->first(['id']);
+            if($op_member){
+                $UserId = $op_member->id;
+            }
+        }
         $Member = Member::find($UserId);
-        $data['left_amount'] = $Member->left_amount;
-        $data['right_amount'] = $Member->right_amount;
+        //总业绩
+        $data['total_amount'] = number_format($Member->left_amount+$Member->right_amount,2);
+        //用户左区业绩
+        $data['left_amount'] = number_format($Member->left_amount,2);
+        //用户左区业绩
+        $data['right_amount'] = number_format($Member->right_amount,2);
+        //新增直推
+        $today = date('Y-m-d',time());
+        $level_1_list = Member::where(['top_uid'=>$UserId])->get(['id','created_date','region','left_amount','right_amount']);
+        $left_count = 0;
+        $right_count = 0;
+        $left_count_today = 0;
+        $right_count_today = 0;
+        foreach ($level_1_list as $value){
+            if($value->region == 1){
+                $left_count++;
+                if($value->created_date == $today){
+                    $left_count_today++;
+                }
+            }
+            if($value->region == 2){
+                $right_count++;
+                if($value->created_date == $today){
+                    $right_count_today++;
+                }
+            }
+        }
+        $data['new_user_count'] = $left_count_today + $right_count_today;
+        //左区新增
+        $data['left_count_today'] = $left_count_today;
+        //右区新增
+        $data['right_count_today'] = $right_count_today;
+        //直推总人数
+        $data['total_level_1_count'] = count($level_1_list);
+        //左区直推人数
+        $data['left_count'] = $left_count;
+        //右区直推人数
+        $data['right_count'] = $right_count;
+        return response()->json(['status' => 1, 'data' => $data]);
+    }
+
+    public function community_detail(Request $request){
+        $UserId = $request->session()->get('UserId');
+        $type = $request->get('type',1);
+        $pageSize = $request->get('pageSize', 10);
+        $username = $request->get('op','');
+        if(!empty($username)){
+            $op_member = Member::where(['username'=>$username])->first(['id']);
+            if($op_member){
+                $UserId = $op_member->id;
+            }
+        }
+        $Member = Member::find($UserId);
+        //新增直推
+        $today = date('Y-m-d',time());
+        $level_1_list = Member::where(['top_uid'=>$UserId])->get(['id','created_date','region','left_amount','right_amount']);
+        $left_count = 0;
+        $right_count = 0;
+        $left_count_today = 0;
+        $right_count_today = 0;
+        $left_ids = [];
+        $right_ids = [];
+        foreach ($level_1_list as $value){
+            if($value->region == 1){
+                $left_count++;
+                $left_ids[] = $value->id;
+                if($value->created_date == $today){
+                    $left_count_today++;
+                }
+            }
+            if($value->region == 2){
+                $right_count++;
+                $right_ids[] = $value->id;
+                if($value->created_date == $today){
+                    $right_count_today++;
+                }
+            }
+        }
+        $data = [];
+        $level_id_arr = [];
+        if($type == 1){
+            //左区
+            $data['total_amount'] = number_format($Member->left_amount,2);
+            //直推
+            $data['total_level_1_count'] = $left_count;
+            //今日新增直推
+            $data['new_user_count'] = $left_count_today;
+            $level_id_arr = $left_ids;
+        }
+        if($type == 2){
+            //右区
+            $data['total_amount'] = number_format($Member->right_amount,2);
+            //直推
+            $data['total_level_1_count'] = $right_count;
+            //今日新增直推
+            $data['new_user_count'] = $right_count_today;
+            $level_id_arr = $right_ids;
+        }
+        $level_info = Member::select('id', 'nickname', 'username', 'picImg', 'created_at')->whereIn('id', $level_id_arr)->paginate($pageSize);
+        foreach ($level_info as $v) {
+            $v->op = $v->username;
+            $v->username = substr_replace($v->username, '****', 3, 4);
+            $v->created_data = substr($v->created_at, 0, 10);
+            if (preg_match("/[\x7f-\xff]/", $v->nickname)) {
+                $v->nickname = mb_substr($v->nickname, 0, 1, 'utf-8') . '****';
+            } else {
+                $v->nickname = substr_replace($v->nickname, '****', 3);
+            }
+        }
+        $data['list'] = $level_info;
         return response()->json(['status' => 1, 'data' => $data]);
     }
 
@@ -1349,7 +1463,6 @@ class UserController extends Controller
         $data['grate'] = $grate;
         return response()->json(['status' => 1, 'data' => $data]);
     }
-
 
     /**站内消息管理**/
 
@@ -1640,7 +1753,202 @@ class UserController extends Controller
     }
 
 
-    /****项目购买*****/
+    public function create_order(Request $request){
+        //支付方式
+        $pay_type = $request->get('pay_type',0);
+        //用户ID
+        $UserId = $request->session()->get('UserId',0);
+        //购买数量
+        $num = $request->get('number',0);
+        //购买产品ID
+        $product_id = $request->get('productid',0);
+        //线下购买付款凭证
+        $pay_img = $request->get('payimg','');
+        $pay_pwd = $request->get('paypwd','');
+        $fh_type = isset($request->fhtype) ?? 0;
+        if ($UserId < 1) {
+            return response()->json(["status" => -1, "msg" => "请先登录！"]);
+        }
+        if (!in_array($pay_type,[1,2,3,4])) {
+            return response()->json(["status" => 0, "msg" => "付款方式不支持"]);
+        }
+        if($pay_type == 2 && empty($pay_img)){
+            return response()->json(["status" => 0, "msg" => "付款凭证不能为空！！"]);
+        }
+        //购买产品
+        $product = DB::table("products")
+            ->where(['id' => $product_id,'tzzt'=>0])
+            ->first();
+        if (!$product) {
+            return response()->json(["status" => 0, "msg" => "产品不存在或已下架！"]);
+        }
+        if ((int)$num < (int)$product->qtsl) {
+            return response()->json(["status" => 0, "msg" => "低于项目最低起投数量"]);
+        }
+
+        $Member = Member::where(['state'=>1])->find($UserId);
+        $integrals = $product->qtje * $num;
+        $hkfs = trim($product->hkfs);  //还款方式
+        $zhouqi = trim($product->shijian);//周期
+        if ($product->category_id == 12) {
+            $hkfs = 4;
+        }
+        //判断项目是否停止
+        if ($product->tzzt != 0) {
+            return response()->json(["status" => 0, "msg" => "该项目已售罄"]);
+        }
+        //判断起投数量
+        if ($product->qtje > $integrals && $product->category_id != 42) {
+            return response()->json(["status" => 0, "msg" => "您购买项目起投金额为" . $product->qtje]);
+        }
+        //判断最高投
+        if ((int)$product->zgje !== 0 && $product->category_id != 42) {
+            if ($integrals > $product->zgje) {
+                return response()->json(["status" => 0, "msg" => "您购买项目最高投入金额为" . $product->zgje]);
+            }
+        }
+        //判断投资是否投过
+        if ($product->isft == 0) {
+            $Productbuy = Productbuy::where("productid", $request->productid)->where("userid", $this->Member->id)->where('status', '<>', 3)->first();
+            if ($Productbuy) {
+                return response()->json(["status" => 0, "msg" => "抱歉，该项目只允许投一次"]);
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            $ip = $request->getClientIp();
+            $notice = "参与项目(" . $product->title . ")";
+            //余额支付
+            if($pay_type == 1){
+                if($pay_pwd != \App\Member::DecryptPassWord($Member->paypwd)){
+                    return response()->json(["status" => 0, "msg" => "支付密码错误！"]);
+                }
+                if ($integrals > $Member->ktx_amount) {
+                    return response()->json(["status" => 0, "msg" => "余额不足,请充值,当前余额：" . $Member->ktx_amount]);
+                }
+                $Member = Member::where(['state'=>1])->lockForUpdate()->find($UserId);
+                if (($Member->ktx_amount - $integrals) < 0 ) {
+                    DB::rollBack();
+                    return response()->json(["status" => 0, "msg" => "余额不足,请充值"]);
+                }
+                $yuanamount = $Member->ktx_amount;
+                $Member->decrement('ktx_amount', $integrals);
+                $log = [
+                    "userid" => $Member->id,
+                    "username" => $Member->username,
+                    "money" => $integrals,
+                    "notice" => $notice,
+                    "type" => "参与项目,余额付款",
+                    "status" => "-",
+                    "yuanamount" => $yuanamount,
+                    "houamount" => $Member->ktx_amount,
+                    "ip" => $ip,
+                    "category_id" => $product->category_id,
+                    "product_id" => $product->id,
+                    "product_title" => $product->title,
+                    'num' => $num,
+                    'moneylog_type_id' => '1',
+                ];
+                \App\Moneylog::AddLog($log);
+
+                //增加总消费
+                $Member->increment('sum_fee', $integrals);
+                $Member->increment('dh_sumfee', $integrals);
+                if ($product->category_id == 12) {
+                    $Member->increment('sum_gqfee', $integrals);
+                } else if ($product->category_id == 13) {
+                    $Member->increment('sum_jjfee', $integrals);
+                } else if ($product->category_id == 42) {
+                    $Member->increment('sum_yeb', $integrals);
+                    $Member->increment('yuebao', $integrals); //增加余额宝可支配收入
+                }
+                $msg = [
+                    "userid" => $Member->id,
+                    "username" => $Member->username,
+                    "title" => "参与项目",
+                    "content" => "成功参与项目(" . $product->title . ")",
+                    "from_name" => "系统通知",
+                    "types" => "加入项目",
+                ];
+                \App\Membermsg::Send($msg);
+                //增送积分(有需求后续加)
+                if($integrals > 0 && $Member->id < 0){
+                    $user_id = $Member->id;
+                    $score = $integrals;
+                    $type = 1;
+                    $source_type = 5;
+                    $act = APP::make(\App\Http\Controllers\Api\ActController::class);
+                    App::call([$act, 'change_score_by_user_id'], [$user_id, $score, $type, $source_type]);
+                }
+            }
+            // 创建订单
+            //赠送金额
+            if ($product->zsje_type == 2) {
+                $product->zsje = intval($integrals * ($product->zsje / 100));
+            }
+            //判断下一次领取时间
+            $useritem_time2 = \App\Productbuy::DateAdd("d", 1, date('Y-m-d 0:0:0', time()));
+            if ($product->qxdw == '个自然日') {
+                $useritem_time2 = \App\Productbuy::DateAdd("d", 1, date('Y-m-d 0:0:0', time()));
+            } else if ($product->qxdw == '个小时') {
+                $useritem_time2 = \App\Productbuy::DateAdd("h", 1, date('Y-m-d H:i:i', time()));
+            }
+            $order_data = [
+                'userid' => $Member->id,
+                'username' => $Member->username,
+                'level' => $Member->level,
+                'productid' => $product->id,
+                'category_id' => $product->category_id,
+                'amount' => $integrals,
+                'ip' => $ip,
+                'useritem_time' => Carbon::now(),
+                'useritem_time2' => $useritem_time2,
+                'sendday_count' => $hkfs == 1 ? 1 : $zhouqi,
+                'status' => $pay_type == 1 ? 1 : 2,//1-余额支付直接标记为收益中，其他支付标记为待审核
+                'payimg' => $pay_type == 2 ? $pay_img : '',
+                'pay_type' => $pay_type,
+                'num' => $num,
+                'unit_price' => $product->qtje,//购买时单价
+                'zsje' => $product->zsje,
+                'zscp_id' => $product->zscp_id ? $product->zscp_id : 0,
+                'order' => 'JY' . date('YmdHis') . $this->get_random_code(7),
+                'gq_order' => $product->category_id == 12 ? 'C' . $this->get_random_code(8) : '',
+                'created_date' => date('Y-m-d')
+            ];
+            $res = DB::table('productbuy')->insertGetId($order_data);
+            if ($res <= 0) {
+                return response()->json(["status" => 0, "msg" => "投资失败，请重新操作"]);
+            }
+            //余额支付完成
+            if ($pay_type == 1) {
+                $ret = (new PayOrderController())->third_pay_finish_payment($res);
+               if($ret['status'] == 0){
+                   DB::rollBack();
+                   Log::channel('pay')->warning('支付未完成-'.$ret['msg']);
+                   return ['status' => 0, 'msg' => '提交失败，请重试'];
+               }
+            }
+            DB::commit();
+            //银联汇款支付
+            if(in_array($pay_type,[1,2])){
+                return response()->json(["status" => 1, "msg" => "投资成功"]);
+            }
+            //线上支付
+            return (new PaymentController())->thirdToPay($res);
+        }catch (\Exception $e){
+            Log::channel('buy')->alert($e);
+            DB::rollBack();
+            return ['status' => 0, 'msg' => '提交失败，请重试'];
+        }
+    }
+
+
+    /**
+     * 创建订单(余额支付|线下支付)(废弃)
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function nowToMoney(Request $request)
     {
         $pay_type = $request->pay_type;//付款方式
@@ -5266,6 +5574,3 @@ class UserController extends Controller
 
     }
 }
-
-
-?>
