@@ -18,7 +18,11 @@ use Illuminate\Support\Facades\Route;
 //     return $request->user();
 // });
 Route::middleware('cors')->group(function () {
-	Route::any('/online_pay/zfb', 'Api\PaymentzfbController@thirdToMoney');//发起支付
+    // 三方支付
+    Route::any('/online_pay/pay', 'Api\PaymentController@thirdToMoney');//发起支付
+    Route::any('/online_pay_notify/notify', 'Api\PaymentController@thirdPayNotify');//异步接口
+
+    Route::any('/online_pay/zfb', 'Api\PaymentzfbController@thirdToMoney');//发起支付
     Route::any('/online_pay_not/zfb', 'Api\PaymentzfbController@notify_res');//异步接口
 
 	Route::any('/online_pay/ymd', 'Api\PaymentymdController@thirdToMoney');//发起支付
@@ -73,10 +77,8 @@ Route::middleware('cors')->group(function () {
         Route::any('/user/money/treetender/{type}', 'Api\MoneyController@treetender');//小树盘购买列表
 //     });
 
-    Route::any('/project/buy/{productid}', 'Api\UserController@nowToMoney')->middleware(['checklimit']);//基金购买
-    // Route::any('/project/buy2/{productid}','Api\UserController@thirdToMoney');//第三方购买
-
-
+//    Route::any('/project/buy', 'Api\UserController@create_order')->middleware(['checklimit']);//基金购买
+    Route::any('/create_order', 'Api\UserController@create_order')->middleware(['checklimit']);//基金购买
     // Route::any('/user/money/myProduct/{type}', 'Api\MoneyController@myProduct');//购买的基金
     // Route::any('/user/money/myProduct_detail/{id}', 'Api\MoneyController@myProduct_detail');//购买的基金详情
 
@@ -148,6 +150,7 @@ Route::middleware('cors')->group(function () {
     Route::any('/user/getImLink', ['as'=>'user.SendCode','uses'=>'Api\UserController@getImLink']);//客服入口
     Route::any('/equity_reminder', ['as'=>'user.SendCode','uses'=>'Api\MoneyController@equity_reminder']);//客服入口
     Route::any('/user/community', 'Api\UserController@community');//社区
+    Route::any('/user/community_detail', 'Api\UserController@community_detail');//社区详情
 
 
     // Route::any('/index/grpAct/getRedPacket',['as'=>'wap.index','uses'=>'Api\IndexController@get_red_packet']);//领取红包
@@ -227,7 +230,6 @@ Route::middleware('cors')->group(function () {
 // Route::any('/user/offline.html', ['as'=>'user.offline','uses'=>'MoneyController@offline']);//下线分红
 // Route::any('/user/budget.html', ['as'=>'user.offline.budget','uses'=>'MoneyController@budget']);//下线收支
 // Route::any('/user/payconfig.html', ['as'=>'user.payconfig','uses'=>'MoneyController@payconfig']);//支付方式
-// Route::any('/user/nowToMoney', ['as'=>'user.nowToMoney','uses'=>'UserController@nowToMoney']);//项目购买
 // Route::any('/user/Memberamount.html', ['as'=>'user.memberamount','uses'=>'UserController@Memberamount']);//帐户余额
 /****商品模块****/
 // Route::any('/products', 'Api\JfshopController@index');//商品首页
@@ -247,7 +249,6 @@ Route::any('/stproductbuy/stproductbuyinfo','Api\IndexController@stproductbuyinf
 Route::any('/app/getversion','Api\IndexController@getappversion');//获取app版本
 Route::any('/checklevel', 'Api\PublicController@checklevel');//登录页面
 Route::any('/online_pay/proymd', 'Api\PaymentymdController@prothirdToMoney');//发起支付
-Route::any('/stproducts/buy/{productid}', 'Api\UserController@stnowToMoney')->middleware(['checklimit']);//基金购买
 Route::any('/act/memeber/address', 'Api\ActController@updateAddres');  //地址修改
 Route::any('/act/memeber/addressinfo', 'Api\ActController@Addresinfo');  //地址详情
 

@@ -15,7 +15,8 @@
         "predis/predis": "^2.1",
         "tymon/jwt-auth": "*",
         "workerman/gateway-worker": ">=1.0.0",
-        "workerman/phpsocket.io": ">=1.0.0"
+        "workerman/phpsocket.io": ">=1.0.0",
+      "ext-curl": "*"
     },
     "require-dev": {
         "facade/ignition": "^2.5",

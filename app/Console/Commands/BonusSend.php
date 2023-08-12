@@ -47,9 +47,6 @@ class BonusSend extends Command
         if($id>0){
             $where=[["id","=",$id]];
         }
-
-        $startdata = date('Y-m-d 00:00:00');
-        $enddata = date('Y-m-d 23:59:59');
         $now_time = date('Y-m-d H:i:s');
         $now_date = date('Y-m-d');
         $now_datetime = date('Y-m-d H:i');
@@ -66,7 +63,6 @@ class BonusSend extends Command
                         ["useritem_time2", "<", DATE_FORMAT(NOW(), 'Y-m-d H:i:00')]
                     ]);
             })
-          //  ->where("useritem_time2", "=", $startdata)
             ->orderBy('useritem_time2')
             ->count();
         if ($count <= 0) {
@@ -82,7 +78,6 @@ class BonusSend extends Command
                 ->where('amount', '>', 0)
                 ->where('category_id', '<>', 11)
                 ->where(['status' => 1])
-                // ->where("useritem_time2", "=", $startdata)
                 ->where(function ($q) {  //闭包返回的条件会包含在括号中
                     return $q->where("useritem_time2", "=", DATE_FORMAT(NOW(), 'Y-m-d 00:00:00'))
                         ->orWhere([
