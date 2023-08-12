@@ -180,8 +180,22 @@ class UserController extends Controller
         } else {
             $data['status'] = -1;
         }
+        //旅游信息
+        $travel = DB::table("travellog")->where(['userid'=>$UserId,'status'=>0])->first();
+        if($travel && $travel->is_read == 0){
+            $data['travel_info'] = ['id'=>$travel->id,'info'=>'恭喜您获得'.$travel->travel_name.',请联系客服核对！'];
+        }else{
+            $data['travel_info'] = ['id'=>0,'info'=>''];
+        }
         $data['hidden_mobile'] = substr_replace($this->Member->username, '****', 3, 5);
         return response()->json(['status' => 1, 'data' => $data]);
+    }
+
+    public function set_travel_read(Request $request){
+        $UserId = $request->session()->get('UserId');
+        $id = $request->get('id','');
+        DB::table("travellog")->where(['userid'=>$UserId,'id'=>$id])->update(['is_read'=>1]);
+        return response()->json(['status' => 1, 'msg' =>'ok','data'=>'']);
     }
 
     //余额宝详情

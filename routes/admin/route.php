@@ -24,6 +24,8 @@ dongchunhongdeMacBook-Pro-2:lara58 dongchunhong$ php artisan route:list
 //资源路由
 //Route::resource('article', 'ArticleController');
 
+use Illuminate\Support\Facades\Route;
+
 Route::any('/', ['as'=>'index.index','uses'=>'IndexController@index']);//后台首页
 Route::any('Index', ['as'=>'index.index','uses'=>'IndexController@index']);//后台首页
 Route::any('Main', ['as'=>'index.main','uses'=>'IndexController@main']);//后台首页
@@ -273,6 +275,9 @@ Route::any('member/set_ysh', ['as'=>'member.set_ysh','uses'=>'MemberController@s
 Route::any('member/tree', ['as'=>'member.tree','uses'=>'MemberController@tree']);//会员关系图
 Route::any('member/switchonoff', ['as'=>'member.switchonoff','uses'=>'MemberController@switchonoff']);//会员禁用/启用
 Route::any('memberaddress/lists', ['as'=>'memberaddress.lists','uses'=>'MemberaddressController@lists']);
+
+Route::any('travellog/lists', ['as'=>'travellog.lists','uses'=>'TravelLogController@lists']);
+Route::any('travellog/set_notice', ['as'=>'travellog.set_notice','uses'=>'TravelLogController@set_notice']);
 
 //会员等级管理
 Route::any('memberlevel/store', ['as'=>'memberlevel.store','uses'=>'MemberlevelController@store']);
