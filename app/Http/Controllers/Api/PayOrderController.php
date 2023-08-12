@@ -263,6 +263,18 @@ class PayOrderController extends Controller
         }
         if($user->collision_amount <= $user->collision_amount_finsh){
             DB::table('member')->where(['id'=>$user_id])->update(['status'=>2,'collision_amount'=>0,'collision_amount_finsh'=>0]);
+            //消息内容
+            $content = '您已拿满本局奖励，本轮已出局';
+            //站内消息
+            $msg = [
+                "userid" => $user->id,
+                "username" => $user->username,
+                "title" => '出局通知',
+                "content" => $content,
+                "from_name" => "系统通知",
+                "types" => "下线购买分成",
+            ];
+            \App\Membermsg::Send($msg);
             return 0;
         }
         if(($user->collision_amount - $user->collision_amount_finsh) > $amount){
