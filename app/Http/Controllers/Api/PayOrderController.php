@@ -161,55 +161,59 @@ class PayOrderController extends Controller
                             break;
                         }
                         //分成钱数
-                        $rewardMoney = intval($pro_buy_data->amount * $recent->percent * $checkBayong / 100);
-                        $title = "尊敬的{$shangjia}会员您好！您的{$recent->name}分成已到账";
-                        $content = "您的下线{$buyman}购买项目成功,{$rewardMoney}元已赠送到您的账号,当前的提成比例为" . $recent->percent * $checkBayong . "%";
-                        //站内消息
-                        $msg = [
-                            "userid" => $ShangjiaMember->id,
-                            "username" => $ShangjiaMember->username,
-                            "title" => $title,
-                            "content" => $content,
-                            "from_name" => "系统通知",
-                            "types" => "下线购买分成",
-                        ];
-                        \App\Membermsg::Send($msg);
+                        $rateMoney = intval($pro_buy_data->amount * $recent->percent * $checkBayong / 100);
+                        // 计算本次分成真实金额
+                        $rewardMoney = self::get_real_amount($ShangjiaMember->id, $rateMoney);
+                        if($rewardMoney > 0) {
+                            $title = "尊敬的{$shangjia}会员您好！您的{$recent->name}分成已到账";
+                            $content = "您的下线{$buyman}购买项目成功,{$rewardMoney}元已赠送到您的账号,当前的提成比例为" . $recent->percent * $checkBayong . "%";
+                            //站内消息
+                            $msg = [
+                                "userid" => $ShangjiaMember->id,
+                                "username" => $ShangjiaMember->username,
+                                "title" => $title,
+                                "content" => $content,
+                                "from_name" => "系统通知",
+                                "types" => "下线购买分成",
+                            ];
+                            \App\Membermsg::Send($msg);
 
-                        $MOamount = $ShangjiaMember->ktx_amount;
-                        $ShangjiaMember->increment('ktx_amount', $rewardMoney);
-                        $notice = "下线(" . $Member->username . ")购买(" . $product->title . ")项目分成";
-                        $log = [
-                            "userid" => $ShangjiaMember->id,
-                            "username" => $ShangjiaMember->username,
-                            "money" => $rewardMoney,
-                            "notice" => $notice,
-                            "type" => "下线购买分成",
-                            "status" => "+",
-                            "yuanamount" => $MOamount,
-                            "houamount" => $ShangjiaMember->ktx_amount,
-                            "ip" => $pro_buy_data->ip,
-                            "category_id" => $product->category_id,
-                            "product_id" => $product->id,
-                            "from_uid" => $Member->id,
-                            "from_uid_buy_id" => $order_id,
-                            'moneylog_type_id' => '5',
-                        ];
-                        \App\Moneylog::AddLog($log);
+                            $MOamount = $ShangjiaMember->ktx_amount;
+                            $ShangjiaMember->increment('ktx_amount', $rewardMoney);
+                            $notice = "下线(" . $Member->username . ")购买(" . $product->title . ")项目分成";
+                            $log = [
+                                "userid" => $ShangjiaMember->id,
+                                "username" => $ShangjiaMember->username,
+                                "money" => $rewardMoney,
+                                "notice" => $notice,
+                                "type" => "下线购买分成",
+                                "status" => "+",
+                                "yuanamount" => $MOamount,
+                                "houamount" => $ShangjiaMember->ktx_amount,
+                                "ip" => $pro_buy_data->ip,
+                                "category_id" => $product->category_id,
+                                "product_id" => $product->id,
+                                "from_uid" => $Member->id,
+                                "from_uid_buy_id" => $order_id,
+                                'moneylog_type_id' => '5',
+                            ];
+                            \App\Moneylog::AddLog($log);
 
-                        $data = [
-                            "userid" => $ShangjiaMember->id,
-                            "username" => $ShangjiaMember->username,
-                            "xxuserid" => $Member->id,
-                            "xxusername" => $Member->username,
-                            "amount" => $pro_buy_data->amount,
-                            "preamount" => $rewardMoney,
-                            "type" => "下线分成",
-                            "status" => "1",
-                            "xxcenter" => $recent->name,
-                            "created_at" => $now_time,
-                            "updated_at" => $now_time,
-                        ];
-                        DB::table("membercashback")->insert($data);
+                            $data = [
+                                "userid" => $ShangjiaMember->id,
+                                "username" => $ShangjiaMember->username,
+                                "xxuserid" => $Member->id,
+                                "xxusername" => $Member->username,
+                                "amount" => $pro_buy_data->amount,
+                                "preamount" => $rewardMoney,
+                                "type" => "下线分成",
+                                "status" => "1",
+                                "xxcenter" => $recent->name,
+                                "created_at" => $now_time,
+                                "updated_at" => $now_time,
+                            ];
+                            DB::table("membercashback")->insert($data);
+                        }
                         $username = $shangjia;
                     }
                 }
@@ -249,6 +253,58 @@ class PayOrderController extends Controller
             DB::rollBack();
             return ['status' => 0, 'msg' => $e->getMessage()];
         }
+    }
+
+    public static function get_real_amount($user_id,$amount){
+        // 查看当前用户本次应得返佣(已激活用户才能获得)
+        $user = DB::table('member')->where(['user_id'=>$user_id,'status'=>1])->first(['id','status','username','collision_amount','collision_amount_finsh']);
+        if(!$user){
+           return 0;
+        }
+        if($user->collision_amount <= $user->collision_amount_finsh){
+            DB::table('member')->where(['user_id'=>$user_id])->update(['status'=>2,'collision_amount'=>0,'collision_amount_finsh'=>0]);
+            return 0;
+        }
+        if(($user->collision_amount - $user->collision_amount_finsh) > $amount){
+            DB::table('member')->where(['user_id'=>$user_id])->increment('collision_amount_finsh',$amount);
+            return $amount;
+        }
+        if(($user->collision_amount - $user->collision_amount_finsh) == $amount){
+            //达到出局条件
+            DB::table('member')->where(['user_id'=>$user_id])->update(['status'=>2,'collision_amount'=>0,'collision_amount_finsh'=>0]);
+            //消息内容
+            $content = '您已拿满本局奖励，本轮已出局';
+            //站内消息
+            $msg = [
+                "userid" => $user->id,
+                "username" => $user->username,
+                "title" => '出局通知',
+                "content" => $content,
+                "from_name" => "系统通知",
+                "types" => "下线购买分成",
+            ];
+            \App\Membermsg::Send($msg);
+            return $amount;
+        }
+        if(($user->collision_amount - $user->collision_amount_finsh) < $amount){
+            //达到出局条件
+            DB::table('member')->where(['user_id'=>$user_id])->update(['status'=>2,'collision_amount'=>0,'collision_amount_finsh'=>0]);
+            $money = $user->collision_amount - $user->collision_amount_finsh;
+            //消息内容
+            $content = '您已拿满本局奖励，本轮已出局(本次应获得'.$amount.'元,实得'.$money.'元)';
+            //站内消息
+            $msg = [
+                "userid" => $user->id,
+                "username" => $user->username,
+                "title" => '出局通知',
+                "content" => $content,
+                "from_name" => "系统通知",
+                "types" => "下线购买分成",
+            ];
+            \App\Membermsg::Send($msg);
+            return $money;
+        }
+        return 0;
     }
 
     private function get_random_code($num)
