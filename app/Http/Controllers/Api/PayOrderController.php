@@ -257,21 +257,21 @@ class PayOrderController extends Controller
 
     public static function get_real_amount($user_id,$amount){
         // 查看当前用户本次应得返佣(已激活用户才能获得)
-        $user = DB::table('member')->where(['user_id'=>$user_id,'status'=>1])->first(['id','status','username','collision_amount','collision_amount_finsh']);
+        $user = DB::table('member')->where(['id'=>$user_id,'status'=>1])->first(['id','status','username','collision_amount','collision_amount_finsh']);
         if(!$user){
            return 0;
         }
         if($user->collision_amount <= $user->collision_amount_finsh){
-            DB::table('member')->where(['user_id'=>$user_id])->update(['status'=>2,'collision_amount'=>0,'collision_amount_finsh'=>0]);
+            DB::table('member')->where(['id'=>$user_id])->update(['status'=>2,'collision_amount'=>0,'collision_amount_finsh'=>0]);
             return 0;
         }
         if(($user->collision_amount - $user->collision_amount_finsh) > $amount){
-            DB::table('member')->where(['user_id'=>$user_id])->increment('collision_amount_finsh',$amount);
+            DB::table('member')->where(['id'=>$user_id])->increment('collision_amount_finsh',$amount);
             return $amount;
         }
         if(($user->collision_amount - $user->collision_amount_finsh) == $amount){
             //达到出局条件
-            DB::table('member')->where(['user_id'=>$user_id])->update(['status'=>2,'collision_amount'=>0,'collision_amount_finsh'=>0]);
+            DB::table('member')->where(['id'=>$user_id])->update(['status'=>2,'collision_amount'=>0,'collision_amount_finsh'=>0]);
             //消息内容
             $content = '您已拿满本局奖励，本轮已出局';
             //站内消息
@@ -288,7 +288,7 @@ class PayOrderController extends Controller
         }
         if(($user->collision_amount - $user->collision_amount_finsh) < $amount){
             //达到出局条件
-            DB::table('member')->where(['user_id'=>$user_id])->update(['status'=>2,'collision_amount'=>0,'collision_amount_finsh'=>0]);
+            DB::table('member')->where(['id'=>$user_id])->update(['status'=>2,'collision_amount'=>0,'collision_amount_finsh'=>0]);
             $money = $user->collision_amount - $user->collision_amount_finsh;
             //消息内容
             $content = '您已拿满本局奖励，本轮已出局(本次应获得'.$amount.'元,实得'.$money.'元)';
