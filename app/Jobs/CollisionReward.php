@@ -69,6 +69,16 @@ class CollisionReward implements ShouldQueue
 
             $topmemeber = Member::find($topid);
 
+            //不存在大小区
+            if ($topmemeber->left_blance == 0 && $topmemeber->right_blance == 0) {
+                $topid = $topmemeber->top_uid;
+                $region = $topmemeber->region;
+                continue;
+            }
+
+            //用户的小区
+            $user_region = $topmemeber->left_blance > $topmemeber->right_blance ? 1 : 2;
+
             //存在上级
             if (!empty($topmemeber)) {
                 //用户为激活状态
@@ -222,17 +232,32 @@ class CollisionReward implements ShouldQueue
                     }
                 }
 
-                //用户发放启航之星任务奖励,享受小区业绩增加百分比奖励
-                if ($lid > 0) {
-                    foreach ($levellist as $key => $value) {
-                        if ($lid == $value->id) {
-                            $vip_reward = rand($integrals * $value->rate, 2);
-                            if ($vip_reward > $topmemeber->collision_amount - $topmemeber->collision_amount_finsh) {
-                                $vip_reward = $topmemeber->collision_amount - $topmemeber->collision_amount_finsh;
-                            }
-                            $topmemeber->increment('ktx_amount', $vip_reward);
-                            $topmemeber->increment('collision_amount_finsh', $vip_reward);
 
+                //用户发放启航之星任务奖励,享受小区业绩增加百分比奖励
+                if ($region == $user_region) {
+                    if ($lid > 0) {
+                        foreach ($levellist as $key => $value) {
+                            if ($lid == $value->id) {
+                                $vip_reward = rand($integrals * $value->rate, 2);
+                                if ($vip_reward > $topmemeber->collision_amount - $topmemeber->collision_amount_finsh) {
+                                    $vip_reward = $topmemeber->collision_amount - $topmemeber->collision_amount_finsh;
+                                }
+                                $topmemeber->increment('ktx_amount', $vip_reward);
+                                $topmemeber->increment('collision_amount_finsh', $vip_reward);
+
+                                $log = [
+                                    "userid" => $topmemeber->id,
+                                    "username" => $topmemeber->username,
+                                    "money" => $collision_amount,
+                                    "notice" => "下线(" . $this->member->username . ")购买(" . $product->title . ")启航之星奖励",
+                                    "type" => "启航之星奖励",
+                                    "status" => "+",
+                                    "yuanamount" => $yuanmoney,
+                                    "houamount" => $topmemeber->ktx_amount,
+                                    "ip" => \Request::getClientIp(),
+                                ];
+                                \App\Moneylog::AddLog($log);
+                            }
                         }
                     }
                 }
