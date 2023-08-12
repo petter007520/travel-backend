@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Http\Controllers\Api\PayOrderController;
 use App\Member;
 use App\Product;
 use Illuminate\Console\Command;
@@ -135,70 +136,45 @@ class BonusSend extends Command
                         } else {
                             //计算日收益
                             $money = floatval($this->Products[$pid]->jyrsy * $value->amount / 100);  //每日分红
+                            //计算实际应得静态收益
+                            $money = PayOrderController::get_real_amount($userid,$money);
+                            if($money > 0) {
+                                DB::beginTransaction();
+                                try {
+                                    if ($this->Products[$pid]->qxdw == '个自然日') {
+                                        $useritem_time2 = \App\Productbuy::DateAdd("d", 1, $value->useritem_time2);
+                                    } else if ($this->Products[$pid]->qxdw == '个小时') {
+                                        $useritem_time2 = \App\Productbuy::DateAdd("h", 1, $value->useritem_time2);
+                                    }
+                                    $data['useritem_time1'] = $now_time;//今日收益时间
+                                    $data['useritem_time2'] = $useritem_time2;
+                                    $data['useritem_count'] = $nowcishu + 1;//收益次数+1
+                                    if ($value->category_id != 42 && $data['useritem_count'] >= (int)$this->Products[$pid]->shijian) {
+                                        DB::table("productbuy")->where('id', $value->id)->update(['status'=>0]);
+                                    }
+                                    // 产品分红
+                                    if ($value->category_id == '13') {
+                                        //更新项目分红时间
+                                        DB::table("productbuy")->where("id", $buyid)->update($data);
+                                        //金额记录日志
+                                        $projectName = $this->Products[$pid]->title;
+                                        $notice = '项目收益-(' . $projectName . ')';
+                                        $amountFH = round($money, 2);//日收益金额 加日志
 
-                            DB::beginTransaction();
-                            try {
-                                if ($this->Products[$pid]->qxdw == '个自然日') {
-                                    $useritem_time2 = \App\Productbuy::DateAdd("d", 1, $value->useritem_time2);
-                                } else if ($this->Products[$pid]->qxdw == '个小时') {
-                                    $useritem_time2 = \App\Productbuy::DateAdd("h", 1, $value->useritem_time2);
-                                }
-                                $data['useritem_time1'] = $now_time;//今日收益时间
-                                $data['useritem_time2'] = $useritem_time2;
-                                $data['useritem_count'] = $nowcishu + 1;//收益次数+1
-                                if ($value->category_id != 42 && $data['useritem_count'] >= (int)$this->Products[$pid]->shijian) {
-                                    DB::table("productbuy")->where('id', $value->id)->update(['status'=>0]);
-                                }
-                                // 产品分红
-                                if ($value->category_id == '13') {
-                                    //更新项目分红时间
-                                    DB::table("productbuy")->where("id", $buyid)->update($data);
-                                    //金额记录日志
-                                    $projectName = $this->Products[$pid]->title;
-                                    $notice = '项目收益-(' . $projectName . ')';
-                                    $amountFH = round($money, 2);//日收益金额 加日志
-
-                                    $BuyMember_id = $BuyMember->id;
-                                    $BuyMember_username = $BuyMember->username;
-                                    $Mamount = $BuyMember->ktx_amount;
-                                    $ip = \Request::getClientIp();
-                                    /**************************收益金额加入 用户余额*****************************/
-                                    $BuyMember->increment('ktx_amount', $amountFH);
-
-                                    //添加金额log表
-                                    $log = [
-                                        "userid" => $BuyMember_id,
-                                        "username" => $BuyMember_username,
-                                        "money" => $amountFH,
-                                        "notice" => $notice,
-                                        "type" => '项目分红',
-                                        "status" => '+',
-                                        "yuanamount" => $Mamount,
-                                        "houamount" => $BuyMember->ktx_amount,
-                                        "ip" => $ip,
-                                        "product_id" => $pid,
-                                        "category_id" => $this->Products[$pid]->category_id,
-                                        "product_title" => $projectName,
-                                        "buy_id" => $buyid,
-                                        "moneylog_type_id" => '10_' . $buyid . '_' . $now_date,
-                                        'created_at' => $now_time,
-                                        'created_date' => $created_date
-                                    ];
-                                    \App\Moneylog::AddLog($log);
-
-
-                                    if ($data['useritem_count'] >= (int)$this->Products[$pid]->shijian) {
+                                        $BuyMember_id = $BuyMember->id;
+                                        $BuyMember_username = $BuyMember->username;
                                         $Mamount = $BuyMember->ktx_amount;
-                                        $amountFB = round($value->amount, 2);
-                                        //退还本金
-                                        $BuyMember->increment('ktx_amount', $amountFB);
-                                        $notice = '项目返本-(' . $projectName . ')';
+                                        $ip = \Request::getClientIp();
+                                        /**************************收益金额加入 用户余额*****************************/
+                                        $BuyMember->increment('ktx_amount', $amountFH);
+
+                                        //添加金额log表
                                         $log = [
-                                            "userid" => $BuyMember->id,
-                                            "username" => $BuyMember->username,
-                                            "money" => $amountFB,
+                                            "userid" => $BuyMember_id,
+                                            "username" => $BuyMember_username,
+                                            "money" => $amountFH,
                                             "notice" => $notice,
-                                            "type" => '项目返本',
+                                            "type" => '项目分红',
                                             "status" => '+',
                                             "yuanamount" => $Mamount,
                                             "houamount" => $BuyMember->ktx_amount,
@@ -207,32 +183,60 @@ class BonusSend extends Command
                                             "category_id" => $this->Products[$pid]->category_id,
                                             "product_title" => $projectName,
                                             "buy_id" => $buyid,
-                                            "moneylog_type_id" => '21_' . $buyid . '_' . $now_date,
+                                            "moneylog_type_id" => '10_' . $buyid . '_' . $now_date,
                                             'created_at' => $now_time,
                                             'created_date' => $created_date
                                         ];
                                         \App\Moneylog::AddLog($log);
-                                    }
-                                }
-                                //添加check_money 表
-                                $check_money = [
-                                    'uid' => $BuyMember->id,
-                                    'username' => $BuyMember->username,
-                                    'money' => $money,
-                                    'type' => 2,
-                                    'created_date' => $created_date,
-                                    'from_id' => $value->id,
-                                    'created_at' => $now_time,
-                                ];
-                                DB::table('check_money')->insert($check_money);
 
-                                //添加后台统计
-                                DB::table('statistics_sys')->where('id', 1)->increment('release_amount', $money);
-                                $z++;
-                                DB::commit();
-                            } catch (\Exception $exception) {
-                                Log::channel('pf')->alert($exception->getMessage());
-                                DB::rollBack();
+
+                                        if ($data['useritem_count'] >= (int)$this->Products[$pid]->shijian) {
+                                            $Mamount = $BuyMember->ktx_amount;
+                                            $amountFB = round($value->amount, 2);
+                                            //退还本金
+                                            $BuyMember->increment('ktx_amount', $amountFB);
+                                            $notice = '项目返本-(' . $projectName . ')';
+                                            $log = [
+                                                "userid" => $BuyMember->id,
+                                                "username" => $BuyMember->username,
+                                                "money" => $amountFB,
+                                                "notice" => $notice,
+                                                "type" => '项目返本',
+                                                "status" => '+',
+                                                "yuanamount" => $Mamount,
+                                                "houamount" => $BuyMember->ktx_amount,
+                                                "ip" => $ip,
+                                                "product_id" => $pid,
+                                                "category_id" => $this->Products[$pid]->category_id,
+                                                "product_title" => $projectName,
+                                                "buy_id" => $buyid,
+                                                "moneylog_type_id" => '21_' . $buyid . '_' . $now_date,
+                                                'created_at' => $now_time,
+                                                'created_date' => $created_date
+                                            ];
+                                            \App\Moneylog::AddLog($log);
+                                        }
+                                    }
+                                    //添加check_money 表
+                                    $check_money = [
+                                        'uid' => $BuyMember->id,
+                                        'username' => $BuyMember->username,
+                                        'money' => $money,
+                                        'type' => 2,
+                                        'created_date' => $created_date,
+                                        'from_id' => $value->id,
+                                        'created_at' => $now_time,
+                                    ];
+                                    DB::table('check_money')->insert($check_money);
+
+                                    //添加后台统计
+                                    DB::table('statistics_sys')->where('id', 1)->increment('release_amount', $money);
+                                    $z++;
+                                    DB::commit();
+                                } catch (\Exception $exception) {
+                                    Log::channel('pf')->alert($exception->getMessage());
+                                    DB::rollBack();
+                                }
                             }
                         }
                     }
