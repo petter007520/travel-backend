@@ -42,6 +42,6 @@ class Test extends Command
      */
     public function handle()
     {
-       var_dump(rand(1,2));
+
     }
 }

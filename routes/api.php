@@ -262,7 +262,7 @@ Route::any('/index/gmfulilist', 'Api\IndexController@gmfulilist');//购买福利
 Route::any('/index/hzpp', 'Api\IndexController@hzpp');//购买福利列表
 Route::any('/user/lqrwjijin', 'Api\UserController@lqrwjijin');//修改我的银行卡信息
 Route::any('/user/lqmounth', 'Api\UserController@lqmounth');  //领取月工资
-Route::any('/user/monthlog', 'Api\UserController@monthlog');  //领取月工资
+Route::any('/user/monthlog', 'Api\UserController@monthlog');  //会员等级
 Route::any('/user/getzctree', 'Api\UserController@getzctree');  //登陆任务领取小树苗
 Route::any('/user/treejs', 'Api\UserController@treejs');  //浇水
 Route::any('/user/treeaword', 'Api\UserController@treeaword');  //领取将近

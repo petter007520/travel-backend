@@ -1710,7 +1710,6 @@ class UserController extends Controller
         //线下购买付款凭证
         $pay_img = $request->get('payimg','');
         $pay_pwd = $request->get('paypwd','');
-        $fh_type = isset($request->fhtype) ?? 0;
         if ($UserId < 1) {
             return response()->json(["status" => -1, "msg" => "请先登录！"]);
         }
@@ -1730,8 +1729,15 @@ class UserController extends Controller
         if ((int)$num < (int)$product->qtsl) {
             return response()->json(["status" => 0, "msg" => "低于项目最低起投数量"]);
         }
-
         $Member = Member::where(['state'=>1])->find($UserId);
+        //判断用户是否可以购买
+        if($Member->status == 1){
+            return response()->json(["status" => 0, "msg" => "您还未出局，无法再次购买"]);
+//            $order = DB::table('productbuy')->where(['userid'=>$UserId,'status'=>1])->first();
+//            if($order && $order->productid == $product_id){
+//                return response()->json(["status" => 0, "msg" => "您还未出局，无法再次购买"]);
+//            }
+        }
         $integrals = $product->qtje * $num;
         $hkfs = trim($product->hkfs);  //还款方式
         $zhouqi = trim($product->shijian);//周期
@@ -4504,395 +4510,6 @@ class UserController extends Controller
         return response()->json(["status" => 1, "msg" => "返回成功", 'data' => $data]);
     }
 
-
-    /****实体产品购买*****/
-    public function stnowToMoney(Request $request)
-    {
-
-        $pay_type = $request->pay_type;//付款方式
-
-        //购买项目
-        $UserId = $request->session()->get('UserId');
-
-
-        $UserName = $request->session()->get('UserName');
-        if ($UserId < 1) {
-            return response()->json(["status" => -1, "msg" => "请先登录！"]);
-        }
-
-        if (!$request->productid || !is_numeric($request->productid)) {
-            return response()->json(["status" => 0, "msg" => "商品不存在或已下架！！"]);
-        }
-        if ($request->number < 1 || !is_numeric($request->number)) {
-            return response()->json(["status" => 0, "msg" => "购买商品数量错误！"]);
-        }
-
-        $product = DB::table("stproduct")
-            //  ->select('id','category_name','category_id','name','content','brief','fee','store','firstlevel','secondlevel','sort','picurl','qtsl','created_at')
-            ->where(['id' => $request->productid])
-            ->first();
-        $llnumg = DB::table("stproductbuy")
-            ->where("userid", $UserId)
-            ->where("stproductid", $request->productid)
-            ->where("issh", '<', 2)
-            ->sum('stnum');
-        //var_dump($llnumg);
-        $llnumg = $llnumg + $request->number;
-        if ($llnumg > $product->xg_num) {
-            return response()->json(["status" => 0, "msg" => "超出限购数量！"]);
-        }
-        if (!$product) {
-            return response()->json(["status" => 0, "msg" => "商品不存在或已下架！"]);
-        }
-
-        if (!$request->payimg && $pay_type != 1) {
-            return response()->json(["status" => 0, "msg" => "付款凭证不能为空！！"]);
-        }
-
-        if ((int)$request->number < (int)$product->qtsl) {
-            return response()->json(["status" => 0, "msg" => "低于商品最低起投数量"]);
-        }
-
-        $Member = Member::where('state', 1)->find($UserId);
-        if ($Member->rw_level == 0) {
-            return response()->json(["status" => 0, "msg" => "请先完成注册任务！"]);
-        }
-        $integrals = $product->fee * $request->number;
-
-        //判断起投数量
-        if ($product->qtsl * $product->fee > $integrals) {
-            return response()->json(["status" => 0, "msg" => "您购买项目起投金额为" . $product->qtje]);
-        }
-
-
-        $Member_paypwd = \App\Member::DecryptPassWord($Member->paypwd);
-        if (($request->paypwd != $Member_paypwd) && $pay_type == 1) {
-            return response()->json(["status" => 0, "msg" => "支付密码错误！"]);
-        }
-        //判断是否为余额支付
-        $yuanamount = $Member->ktx_amount;
-        if ($pay_type == 1) {
-            if ($integrals > $yuanamount) {
-                return response()->json(["status" => 0, "msg" => "余额不足,请充值,当前余额：" . $Member->ktx_amount]);
-            }
-        }
-
-
-        //判断下一次领取时间
-        //$useritem_time2 = \App\Productbuy::DateAdd("d",1, date('Y-m-d 0:0:0',time()));
-
-        $ip = $request->getClientIp();
-        $notice = "购买商品(" . $product->name . ")";
-        //meoneyLog($this->Member->username,$amountPay,$ip,$notice,'-'); //金额记录日志
-
-        DB::beginTransaction();
-        // try{
-
-        $Member = Member::where('state', 1)->lockForUpdate()->find($UserId);
-
-
-        if ($pay_type == 1) {
-
-            $Member->decrement('ktx_amount', $integrals);
-
-            if ($Member->ktx_amount < 0) {
-                // $Member->increment('amount',$integrals);
-                DB::rollBack();
-                return response()->json(["status" => 0, "msg" => "余额不足,请充值"]);
-            }
-            $log = [
-                "userid" => $this->Member->id,
-                "username" => $this->Member->username,
-                "money" => $integrals,
-                "notice" => $notice,
-                "type" => "购买商品,余额付款",
-                "status" => "-",
-                "yuanamount" => $yuanamount,
-                "houamount" => $Member->ktx_amount,
-                "ip" => \Request::getClientIp(),
-                "category_id" => $product->category_id,
-                "product_id" => $product->id,
-                "product_title" => $product->name,
-                'num' => $request->number,
-                'moneylog_type_id' => '1',
-            ];
-            \App\Moneylog::AddLog($log);
-
-            $msg = [
-                "userid" => $this->Member->id,
-                "username" => $this->Member->username,
-                "title" => "购买商品",
-                "content" => "成功购买商品(" . $product->name . ")",
-                "from_name" => "系统通知",
-                "types" => "购买商品",
-            ];
-            \App\Membermsg::Send($msg);
-
-            $user_id = $Member->id;
-            $score = $integrals;
-            $type = 1;
-            $source_type = 5;
-
-            $act = APP::make(\App\Http\Controllers\Api\ActController::class);
-            App::call([$act, 'change_score_by_user_id'], [$user_id, $score, $type, $source_type]);
-
-        } else {
-            $log = [
-                "userid" => $this->Member->id,
-                "username" => $this->Member->username,
-                "money" => $integrals,
-                "notice" => $notice,
-                "type" => "购买商品,银行卡付款",
-                "status" => "-",
-                "yuanamount" => $yuanamount,
-                "houamount" => $Member->ktx_amount,
-                "ip" => \Request::getClientIp(),
-                "category_id" => $product->category_id,
-                "product_id" => $product->id,
-                "product_title" => $product->name,
-                'num' => $request->number,
-                'moneylog_type_id' => '2',
-            ];
-            \App\Moneylog::AddLog($log);
-        }
-
-        //    $sendDay_count = $hkfs == 1?1:$zhouqi;
-
-        $NewProductbuy = new Stproductbuy();
-
-        //赠送金额
-        /*if($product->zsje_type == 2 ){
-                $product->zsje =intval($integrals * (zsje * 0.01));
-            }*/
-
-        $NewProductbuy->userid = $Member->id;
-        $NewProductbuy->username = $Member->username;
-        //  $NewProductbuy->level=$Member->level;
-        $NewProductbuy->stproductid = $request->productid;
-        // $NewProductbuy->payimg=$request->payimg;
-        $NewProductbuy->category_id = $product->category_id;
-        $NewProductbuy->fee = $integrals;
-        $NewProductbuy->ip = $ip;
-        $NewProductbuy->stpname = $product->name;
-        //       $NewProductbuy->useritem_time=Carbon::now();
-        //   $NewProductbuy->useritem_time2=$useritem_time2;
-
-        // $NewProductbuy->sendday_count=$sendDay_count;
-
-        if ($pay_type != 1) {
-            $NewProductbuy->status = 2;
-            // $NewProductbuy->payimg='["'.$request->payimg.'"]';
-            $NewProductbuy->payimg = $request->payimg;
-        }
-        $NewProductbuy->pay_type = $pay_type;
-        $NewProductbuy->stnum = $request->number;//购买数量
-        $NewProductbuy->signfee = $product->fee;//购买时单价
-        $NewProductbuy->picurl = $product->picurl;//商品乳片
-        //  $NewProductbuy->zsje=$product->zsje;
-        //$NewProductbuy->zscp_id=$product->zscp_id?$product->zscp_id:0;
-        $NewProductbuy->order = 'JY' . date('YmdHis') . $this->get_random_code(7);
-        //      $NewProductbuy->gq_order = 'C'.$this->get_random_code(8);
-        //    $NewProductbuy->created_date=date('Y-m-d');
-
-        $res = $NewProductbuy->save();
-        $capital_flow = $integrals; //流水统计金额
-
-
-        //如果是货币，添加到会员货币表
-        if ($product->category_id == 11 && $pay_type == 1) {
-            $insert_hb = [
-                'userid' => $Member->id,
-                'num' => $request->number,
-                'productid' => $request->productid,
-            ];
-            $this->insert_hb($insert_hb);
-        }
-
-
-        if (!$res) {
-            return response()->json(["status" => 0, "msg" => "购买失败，请重新操作"]);
-        } else {
-            if ($pay_type == 1) {
-                //如果是余额支付
-                //当前统计时间
-                $now_statistics_date = date('Y-m-d');
-
-                //添加个人统计
-                if ($product->category_id == 12) {
-
-                } else {
-                    DB::table('statistics')->where('user_id', $Member->id)->increment('capital_flow', $capital_flow);
-                }
-                //添加后台统计
-                DB::table('statistics_sys')->where('id', 1)->increment('buy_amount', $capital_flow);
-                //统计表end
-
-                $is_return = true;
-                /*if($pay_type == 1 && ($product->fy_type == 3 || $product->fy_type == 1)){
-                        $is_return = true;
-                    }
-
-                    if($pay_type != 1 && ($product->fy_type == 2 || $product->fy_type == 1)){
-                        $is_return = true;
-                    }*/
-                $now_time = Carbon::now();
-                if ($is_return) {
-
-                    //上级 是否满足团队奖励
-                    // $shangji_id = DB::table('membergrade')->where(['uid'=>$Member->id,'level'=>1])->value('pid');
-                    $shangji_id = $Member->top_uid;
-                    $sshangji_id = $Member->ttop_uid;
-                    //var_dump($Member);
-                    //  var_dump($Member->top_uid);
-                    $shangji_info = DB::table('member')->select('level', 'mtype', 'username', 'activation', 'ktx_amount', 'integral')->where('id', $shangji_id)->first();
-                    $sshangji_info = DB::table('member')->select('level', 'mtype', 'username', 'activation', 'ktx_amount', 'integral')->where('id', $sshangji_id)->first();
-
-                    if ($Member->ktx_amount < 0) {
-                        DB::rollBack();
-                        return response()->json(["status" => 0, "msg" => "余额不足,请充值"]);
-                    }
-
-                    ///////////////////////////////////////////////////////////////////////////
-                    $this->Member->username = substr_replace($this->Member->username, '****', 3, 5);
-                    $ShangjiaMember = Member::where("id", $shangji_id)->first();  //上级名称
-                    $SShangjiaMember = Member::where("id", $sshangji_id)->first();  //上上级信息
-                    //   var_dump($ShangjiaMember);
-                    $buyman = $this->Member->username;
-                    //分成钱数
-                    //    $rewardMoney = intval($integrals * $recent->percent * $checkBayong / 100);
-                    $rewardMoney = $product->firstlevel * $request->number;  //上级分成
-                    $rrewardMoney = $product->secondlevel * $request->number;  //上上级分成
-                    // var_dump($rewardMoney);
-                    $shangjia = $ShangjiaMember->username;
-                    $sshangjia = $SShangjiaMember->username;
-                    {
-                        /* $title = "尊敬的{$shangjia}会员您好！您的商品分成已到账";
-                            $content = "您的下线{$buyman}购买项目成功,{$rewardMoney}元已赠送到您的账号";
-                            //站内消息
-                            $msg=[
-                                "userid"=>$ShangjiaMember->id,
-                                "username"=>$ShangjiaMember->username,
-                                "title"=>$title,
-                                "content"=>$content,
-                                "from_name"=>"系统通知",
-                                "types"=>"下线购买分成",
-                            ];
-                            \App\Membermsg::Send($msg);
-
-
-                            $MOamount=$ShangjiaMember->ktx_amount;
-
-                            $ShangjiaMember->increment('ktx_amount',$rewardMoney);*/
-                        /*
-                            $notice = "下线(".$this->Member->username.")购买(".$product->name.")产品分成";
-
-                            $log=[
-                                "userid"=>$ShangjiaMember->id,
-                                "username"=>$ShangjiaMember->username,
-                                "money"=>$rewardMoney,
-                                "notice"=>$notice,
-                                "type"=>"下线购买分成",
-                                "status"=>"+",
-                                "yuanamount"=>$MOamount,
-                                "houamount"=>$ShangjiaMember->ktx_amount,
-                                "ip"=>\Request::getClientIp(),
-                                "category_id"=>$product->category_id,
-                                "product_id"=>$product->id,
-                                "from_uid"=>$UserId,
-                                "from_uid_buy_id"=>$NewProductbuy->id,
-                                'moneylog_type_id'=>'5',
-                            ];
-                            \App\Moneylog::AddLog($log);
-
-                            $data=[
-                                "userid"=>$ShangjiaMember->id,
-                                "username"=>$ShangjiaMember->username,
-                                "xxuserid"=>$Member->id,
-                                "xxusername"=>$Member->username,
-                                "amount"=>$integrals,
-                                "preamount"=>$rewardMoney,
-                                "type"=>"下线分成",
-                                "status"=>"1",
-                                // "xxcenter"=>$recent->name,
-                                "created_at"=>$now_time,
-                                "updated_at"=>$now_time,
-                            ];
-                            DB::table("membercashback")->insert($data);*/
-                    }
-                    {
-                        /* $title = "尊敬的{$sshangjia}会员您好！您的商品分成已到账";
-                            $content = "您的下线{$buyman}购买项目成功,{$rewardMoney}元已赠送到您的账号";
-                            //站内消息
-                            $msg=[
-                                "userid"=>$SShangjiaMember->id,
-                                "username"=>$SShangjiaMember->username,
-                                "title"=>$title,
-                                "content"=>$content,
-                                "from_name"=>"系统通知",
-                                "types"=>"下线购买分成",
-                            ];
-                            \App\Membermsg::Send($msg);
-
-
-                            $MOamount=$SShangjiaMember->ktx_amount;
-
-                            $SShangjiaMember->increment('ktx_amount',$rrewardMoney);
-*/
-                        /*   $notice = "下线(".$this->Member->username.")购买(".$product->name.")产品分成";
-
-                            $log=[
-                                "userid"=>$SShangjiaMember->id,
-                                "username"=>$SShangjiaMember->username,
-                                "money"=>$rrewardMoney,
-                                "notice"=>$notice,
-                                "type"=>"下线购买分成",
-                                "status"=>"+",
-                                "yuanamount"=>$MOamount,
-                                "houamount"=>$SShangjiaMember->ktx_amount,
-                                "ip"=>\Request::getClientIp(),
-                                "category_id"=>$product->category_id,
-                                "product_id"=>$product->id,
-                                "from_uid"=>$UserId,
-                                "from_uid_buy_id"=>$NewProductbuy->id,
-                                'moneylog_type_id'=>'5',
-                            ];
-                            \App\Moneylog::AddLog($log);*/
-
-                        /*    $data=[
-                                "userid"=>$SShangjiaMember->id,
-                                "username"=>$SShangjiaMember->username,
-                                "xxuserid"=>$Member->id,
-                                "xxusername"=>$Member->username,
-                                "amount"=>$integrals,
-                                "preamount"=>$rrewardMoney,
-                                "type"=>"下线分成",
-                                "status"=>"1",
-                                // "xxcenter"=>$recent->name,
-                                "created_at"=>$now_time,
-                                "updated_at"=>$now_time,
-                            ];
-                            DB::table("membercashback")->insert($data);*/
-                    }
-
-                    ///////////////////////////////////////////////////////////////////////////
-                }
-            }
-            if ($Member->rw_level == 1) {
-                $Member->rw_level;
-                $Member->save();
-            }
-
-            DB::commit();
-            return response()->json(["status" => 1, "msg" => "购买成功"]);
-        }
-        try {
-        } catch (\Exception $exception) {
-            Log::channel('buy')->alert($exception);
-            DB::rollBack();
-            return ['status' => 0, 'msg' => '购买失败，请重试'];
-        }
-    }
-
     //领取任务奖金
     public function lqrwjijin(Request $request)
     {
@@ -4944,38 +4561,26 @@ class UserController extends Controller
         }
     }
 
+    /**
+     * 会员等级描述
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function monthlog(Request $request)
     {
         $UserId = $request->session()->get('UserId');
-        $Member = Member::find($UserId);
-        $memberlevel = DB::table("memberlevel")->find($this->Member->level);
-        /*if(empty($memberlevel)){
-            $data['levelname'] = '普通会员';
-        }else{
-            $data['levelname'] = $memberlevel->name;
-        }*/
+        $Member = DB::table('member')->where(['id'=>$UserId])->first(['left_amount','right_amount','level']);
+        $memberlevel = DB::table("memberlevel")->find($Member->level);
+
         if (empty($memberlevel)) {
-
-            $levelname = '普通会员';
-
             $levelname = '普通会员';
         } else {
-            //  $data['levelpic'] = $memberlevel->pic;
             $levelname = $memberlevel->name;
         }
         $list = Memberlevel::orderBy("id", "ASC")->get();
-        $list1 = [];
-        /*foreach ($list as $key=>$value){
-            $data["pic_url"] = $value->pic;
-            $data["level_name"] = $value->name;
-            $data["levle_tiaojian"] = "购买".$value->level_fee."元丨直推".$value->tj_num."人";
-            $data["moneylog_money"] = $value->gongzi;
-            array_push($list1,$data);
-        }*/
-        /* $list = \App\Moneylog::where('moneylog_userid',$UserId)
-             ->where('moneylog_type',"领取月工资")
-             ->orderBy("id","DESC")->get();*/
-        return response()->json(["status" => 1, "msg" => "返回成功", 'data' => $list, 'member' => $Member, 'levelname' => $levelname]);
+        //小区业绩
+        $amount = min($Member->left_amount, $Member->right_amount);
+        return response()->json(["status" => 1, "msg" => "返回成功", 'data' => $list, 'amount' => $amount, 'levelname' => $levelname]);
     }
 
     //领取月工资

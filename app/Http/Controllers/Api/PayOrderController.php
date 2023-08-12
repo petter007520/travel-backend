@@ -256,13 +256,13 @@ class PayOrderController extends Controller
     }
 
     public static function get_real_amount($user_id,$amount){
+        $user_is_out = false;
         // 查看当前用户本次应得返佣(已激活用户才能获得)
         $user = DB::table('member')->where(['id'=>$user_id,'status'=>1])->first(['id','status','username','collision_amount','collision_amount_finsh']);
         if(!$user){
            return 0;
         }
         if($user->collision_amount <= $user->collision_amount_finsh){
-            DB::table('member')->where(['id'=>$user_id])->update(['status'=>2,'collision_amount'=>0,'collision_amount_finsh'=>0]);
             //消息内容
             $content = '您已拿满本局奖励，本轮已出局';
             //站内消息
@@ -275,6 +275,8 @@ class PayOrderController extends Controller
                 "types" => "下线购买分成",
             ];
             \App\Membermsg::Send($msg);
+            // 用户出局，所有订单标记已结束
+            self::finish_order($user_id);
             return 0;
         }
         if(($user->collision_amount - $user->collision_amount_finsh) > $amount){
@@ -282,8 +284,6 @@ class PayOrderController extends Controller
             return $amount;
         }
         if(($user->collision_amount - $user->collision_amount_finsh) == $amount){
-            //达到出局条件
-            DB::table('member')->where(['id'=>$user_id])->update(['status'=>2,'collision_amount'=>0,'collision_amount_finsh'=>0]);
             //消息内容
             $content = '您已拿满本局奖励，本轮已出局';
             //站内消息
@@ -296,11 +296,11 @@ class PayOrderController extends Controller
                 "types" => "下线购买分成",
             ];
             \App\Membermsg::Send($msg);
+            // 用户出局，所有订单标记已结束
+            self::finish_order($user_id);
             return $amount;
         }
         if(($user->collision_amount - $user->collision_amount_finsh) < $amount){
-            //达到出局条件
-            DB::table('member')->where(['id'=>$user_id])->update(['status'=>2,'collision_amount'=>0,'collision_amount_finsh'=>0]);
             $money = $user->collision_amount - $user->collision_amount_finsh;
             //消息内容
             $content = '您已拿满本局奖励，本轮已出局(本次应获得'.$amount.'元,实得'.$money.'元)';
@@ -314,9 +314,18 @@ class PayOrderController extends Controller
                 "types" => "下线购买分成",
             ];
             \App\Membermsg::Send($msg);
+            // 用户出局，所有订单标记已结束
+            self::finish_order($user_id);
             return $money;
         }
         return 0;
+    }
+
+    private static function finish_order($user_id){
+        //收益订单结束
+        DB::table('productbuy')->where(['userid'=>$user_id])->update(['status'=>0,'reason'=>'用户出局，订单结束']);
+        //标记出局
+        DB::table('member')->where(['id'=>$user_id])->update(['status'=>2,'collision_amount'=>0,'collision_amount_finsh'=>0]);
     }
 
     private function get_random_code($num)
