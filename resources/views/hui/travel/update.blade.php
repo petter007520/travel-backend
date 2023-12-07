@@ -60,7 +60,7 @@
                 <img src="{{$edit->img}}" width="100" style="float:left;"/>
                     @endif
             </span>
-            <input type="text" name="image"  class="layui-input thumb" placeholder="缩略图" style="float:left;width:50%;" value="{{$edit->img}}">
+            <input type="text" name="img"  class="layui-input thumb" placeholder="缩略图" style="float:left;width:50%;" value="{{$edit->img}}">
             <script>
                 layui.use('upload', function(){
                     var upload = layui.upload;
