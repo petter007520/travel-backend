@@ -77,7 +77,7 @@ namespace App\Http\Controllers\Admin;
             unset($data['thumb']);
             $data['category_name']=$this->CategoryModel->where("id",$data['category_id'])->value('name');
             $data['title']=\App\Formatting::ToFormat($data['title']);
-            $data['img']=$data['image'];
+            $data['img']=\App\Formatting::ToFormat($data['img']);
             $data['tips']=\App\Formatting::ToFormat($data['tips']);
             $data['content']=\App\Formatting::ToFormat($data['content']??'');
             $data['video_url']=\App\Formatting::ToFormat($data['video_url']);
