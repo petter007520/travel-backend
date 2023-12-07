@@ -372,7 +372,7 @@ class UserController extends Controller
             'mobile'   => substr_replace($this->Member->username, '****', 3, 5),
             'bank'     => $bank_card,
             'level' => $this->Member->level,
-            'level_name' => DB::table("memberlevel")->where('level',$this->Member->level)->value('name')
+            'level_name' => $this->Member->level >0 ? DB::table("memberlevel")->where('level',$this->Member->level)->value('name'): '普通会员'
         ];
         return response()->json(['status' => 1,'msg'=>'ok','data' => $userData]);
     }
