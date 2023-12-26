@@ -165,12 +165,20 @@ class UserController extends Controller
         } else {
             $data['real_status'] = -1;
         }
-//        $date = date('Y-m-d');
-//        $dayTime = [$date.' 00:00:00',$date.' 23:59:59'];
+        $date = date('Y-m-d');
+        $dayTime = [$date.' 00:00:00',$date.' 23:59:59'];
         //资产
-//        $data['income_day'] = DB::table('moneylog')->where(['moneylog_userid'=>$this->Member->id])
-//            ->whereIn('moneylog_type',['直推返佣','对碰奖励','星级奖励','股东奖励','静态收益'])
-//            ->whereBetween('created_at',$dayTime)->sum('moneylog_money');
+        $income_day = DB::table('member_reward_log')->where(['user_id'=>$this->Member->id,'created_date'=>$date,'type'=>1])->get(['amount','from']);
+        $data['income_day_left'] = 0;
+        $data['income_day_right'] = 0;
+       foreach ($income_day as $val){
+           if($val->from == 'left'){
+               $data['income_day_left'] += $val->amount;
+           }
+           if($val->from == 'right'){
+               $data['income_day_right'] += $val->amount;
+           }
+       }
 //        $data['income_all'] = DB::table('moneylog')->where(['moneylog_userid'=>$this->Member->id])
 //            ->whereIn('moneylog_type',['直推返佣','对碰奖励','星级奖励','股东奖励','静态收益'])->sum('moneylog_money');
         return response()->json(['status' => 1, 'data' => $data]);

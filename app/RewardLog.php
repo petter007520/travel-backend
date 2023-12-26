@@ -30,6 +30,7 @@ class RewardLog extends Model
             'user_id'   => $data['user_id'],
             'username'  => $data['username'],
             'title'     => $data['title'],
+            'from'      => $data['from'],
             'type'      => $data['type'],
             'type_title'=> $data['type_title'],
             'amount'    => $data['amount'],
