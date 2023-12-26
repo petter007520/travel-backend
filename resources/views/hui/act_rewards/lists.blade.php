@@ -30,6 +30,10 @@
                     <col>
                     <col>
                     <col>
+                    <col>
+                    <col>
+                    <col>
+                    <col>
                 </colgroup>
                 <thead>
                 <tr>
