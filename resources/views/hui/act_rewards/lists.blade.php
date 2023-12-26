@@ -73,9 +73,9 @@
             <td><% item.score %></td>
             <td>
                 <%# if(item.type==1){ %>
-                现金盲盒
+                <em style="color: red">现金盲盒</em>
                 <%# }else if(item.type==2){ %>
-                旅游盲盒
+                <em style="color: blue">旅游盲盒</em>
                 <%# }%>
             </td>
             <td class="td-manage">
