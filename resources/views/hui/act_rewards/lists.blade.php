@@ -66,7 +66,7 @@
                 <span style=""><% item.id %></span>
             </td>
             <td class="title_<% item.id %>"><% item.name %></td>
-            <td><img src=<% item.img %> width="80"></td>
+            <td><img src=<% item.img %> width="40"></td>
             <td><% item.ratio %></td>
             <td><% item.stock %></td>
             <td><% item.money %></td>
