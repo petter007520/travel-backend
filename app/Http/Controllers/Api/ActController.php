@@ -461,7 +461,7 @@ class ActController extends Controller
 			$v->reward_time = date('Y-m-d H:i:s', $v->reward_time);
 			$v->virtual = $v->virtual == 0 ? false : true;
 		}
-		return response()->json(["status"=>1,"msg"=>"", 'data' => $lottory_logs]);
+		return response()->json(["status"=>1,"msg"=>"ok", 'data' => $lottory_logs]);
 	}
 
 	public function getuserscore(){

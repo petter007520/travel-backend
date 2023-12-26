@@ -1060,7 +1060,7 @@ class UserController extends Controller
                 $query->where('moneylog_type', '=', '充值');
             })
             ->when($type == 'income', function ($query) {
-                $query->whereIn('moneylog_type', ['直推返佣','对碰奖励','星级奖励','股东奖励','静态收益']);
+                $query->whereIn('moneylog_type', ['直推返佣','对碰奖励','星级奖励','股东奖励','静态收益','抽奖']);
 
             })
             ->when($type == 'consumption', function ($query) {
