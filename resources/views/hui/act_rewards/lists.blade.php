@@ -74,7 +74,7 @@
             <td>
                 <%# if(item.type==1){ %>
                 现金盲盒
-                <%# }else if(item.type==1){ %>
+                <%# }else if(item.type==2){ %>
                 旅游盲盒
                 <%# }%>
             </td>
