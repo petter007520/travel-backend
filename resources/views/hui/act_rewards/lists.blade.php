@@ -34,6 +34,7 @@
                     <col>
                     <col>
                     <col>
+                    <col>
                 </colgroup>
                 <thead>
                 <tr>
@@ -70,7 +71,6 @@
             <td><% item.ratio %></td>
             <td><% item.stock %></td>
             <td><% item.money %></td>
-            <td><% item.score %></td>
             <td><% item.score %></td>
             <td>
                 <%# if(item.type==1){ %>
