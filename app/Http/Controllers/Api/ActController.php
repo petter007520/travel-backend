@@ -283,7 +283,7 @@ class ActController extends Controller
             }
             //扣除积分
             $this->change_score_by_user_id($this->user_id, $lottory_score, 2, 2);
-            return response()->json(["status"=>0,"msg"=>"", 'rewards' => $data]);
+            return response()->json(["status"=>1,"msg"=>"ok", 'rewards' => $data]);
         }
     }
 
