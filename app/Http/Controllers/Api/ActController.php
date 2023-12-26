@@ -243,6 +243,7 @@ class ActController extends Controller
                 'reward_name' => $name,
                 'reward_time' => time(),
                 'reward_date' => date('Y-m-d'),
+                'type' => $type,
             ];
 
             $data['virtual'] = ($money > 0 || $score > 0) ? true : false;
@@ -429,9 +430,6 @@ class ActController extends Controller
 
 	//获取中奖列表
 	public function lottoryLog() {
-		if (!$this->user_id) {
-			return response()->json(["status"=>-1,"msg"=>"请先登录！"]);
-		}
 		$lottory_logs = DB::table('act_rewards_log')
 			->join('member', 'member.id', '=', 'act_rewards_log.user_id')
 			->where(['act_rewards_log.pre' => 0])
@@ -440,19 +438,15 @@ class ActController extends Controller
 			->limit(50)
 			->orderBy('act_rewards_log.id', 'desc')
 			->get();
-
-		$data = [];
-		foreach($lottory_logs as $k => $v) {
+		foreach($lottory_logs as $v) {
 			$v->username = substr_replace($v->username, '****', 3, 4);
 			$v->reward_time = date('Y-m-d H:i:s', $v->reward_time);
 		}
 		return response()->json(["status"=>0,"msg"=>"", 'data' => $lottory_logs]);
 	}
+
 	//我的中奖列表
 	public function MyLottoryLog() {
-		if (!$this->user_id) {
-			return response()->json(["status"=>-1,"msg"=>"请先登录！"]);
-		}
 		$lottory_logs = DB::table('act_rewards_log')
 			->join('member', 'member.id', '=', 'act_rewards_log.user_id')
 			->where(['act_rewards_log.pre' => 0])
@@ -462,14 +456,12 @@ class ActController extends Controller
 			->limit(50)
 			->orderBy('act_rewards_log.id', 'desc')
 			->get();
-
-		$data = [];
 		foreach($lottory_logs as $k => $v) {
 			$v->username = substr_replace($v->username, '****', 3, 4);
 			$v->reward_time = date('Y-m-d H:i:s', $v->reward_time);
 			$v->virtual = $v->virtual == 0 ? false : true;
 		}
-		return response()->json(["status"=>0,"msg"=>"", 'data' => $lottory_logs]);
+		return response()->json(["status"=>1,"msg"=>"", 'data' => $lottory_logs]);
 	}
 
 	public function getuserscore(){
