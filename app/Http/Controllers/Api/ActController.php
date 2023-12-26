@@ -202,7 +202,7 @@ class ActController extends Controller
             $rewards_lists = DB::table('act_rewards')
                 ->where(['disabled' => 0,'type' => $type])
                 ->where('stock', '>', 0)
-                ->select('id', 'name', 'img', 'ratio', 'money', 'score')
+                ->select('id', 'name', 'img', 'ratio', 'money', 'score','type')
                 ->get();
             $rewards_lists = json_decode(json_encode($rewards_lists), true);
             if (count($rewards_lists) == 0) {
