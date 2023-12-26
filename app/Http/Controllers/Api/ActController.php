@@ -1,27 +1,10 @@
 <?php
-
 namespace App\Http\Controllers\Api;
-use App\Advertisement;
-use App\Advertisementdata;
-use App\Auth;
-use App\Category;
-use App\Channel;
 use App\Http\Controllers\Controller;
 use App\Member;
-use App\Memberlevel;
-use App\Order;
-use App\Product;
-use App\Productbuy;
 use Carbon\Carbon;
-use DB;
-use App\Admin;
-use App\Ad;
-use App\Site;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Route;
-use Session;
+use Illuminate\Support\Facades\DB;
 
 class ActController extends Controller
 {
@@ -30,18 +13,31 @@ class ActController extends Controller
 
     public function __construct(Request $request)
     {
-		$lastsession = $request->lastsession;
-        if(!$lastsession){
-            return response()->json(["status"=>-1,"msg"=>"请先登录！"]);
-        }else{
-            $Member = Member::where("lastsession",$request->lastsession)->first();
-            if (!$Member) {
-                return response()->json(["status"=>-1,"msg"=>"请先登录！"]);
-            } else {
-                $this->userInfo = $Member;
-				$this->user_id = $Member->id;
-            }
-        }
+         $this->middleware(function ($request, $next) {
+             //请求预检返回 200
+             if($request->method() == 'OPTIONS'){
+                 return response()->json(["status" => 1, "msg" => "ok"]);
+             }
+             $lastsession = $request->header('lastsession');
+                if(!$lastsession){
+                    return response()->json(["status"=>-1,"msg"=>"请先登录！"],401);
+                }else{
+                    $Member = Member::where("lastsession",$lastsession)->first();
+                    if (!$Member) {
+                        return response()->json(["status"=>-1,"msg"=>"请先登录！"],401);
+                    } else {
+                        if ($Member->state == -1) {
+                            return response()->json(["status" => 0, "msg" => "帐号禁用中"]);
+                        }
+                        $this->userInfo = $Member;
+                        $this->user_id = $Member->id;
+                        $request->session()->put('UserId', $Member->id, 120);
+                        $request->session()->put('UserName', $Member->username, 120);
+                        $request->session()->put('Member', $Member, 120);
+                    }
+                }
+             return $next($request);
+         });
 	}
 
 	//签到操作
@@ -49,7 +45,6 @@ class ActController extends Controller
 		if (!$this->user_id) {
 			return response()->json(["status"=>-1,"msg"=>"请先登录！"]);
 		}
-
 		//查找签到记录，获取今天是否签到
 		$sign_info_today = DB::table('act_sign')
 						->orderBy('sign_time', 'desc')
@@ -69,7 +64,6 @@ class ActController extends Controller
 
 		if(!$sign_info_yesterday) {
 			$days = 1;
-			//$reward = $days * 10;
 			$reward = 100;
 			$data = [
 				'user_id' => $this->user_id,
@@ -81,7 +75,6 @@ class ActController extends Controller
 
 		} else {
 			$days = $sign_info_yesterday->sign_days + 1;
-			//$reward = $days * 10;
 			$reward = 100;
 			$data = [
 				'user_id' => $this->user_id,
@@ -124,9 +117,6 @@ class ActController extends Controller
 				$sign_log->source_type_text = '未知，ID: ' . $sign_log->source_type;
 			}
 		}
-
-
-
 		return response()->json(["status"=>0,"msg"=>"", 'score' => $sign_logs]);
 	}
 
@@ -171,151 +161,270 @@ class ActController extends Controller
 		return response()->json(["status"=>0,"msg"=>"", 'rewards' => $rewards_lists]);
 	}
 
+    /**
+     * 财富盲盒|旅行盲盒
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function lottory(Request $request) {
+        // type 1-现金 2：
+        $type = $request->get('type','');
+        if(empty($type) || !in_array($type,[1,2])){
+            return response()->json(["status"=>0,"msg"=>"抽奖类型必须"]);
+        }
+        $lottory_score = 100;
+        if($this->userInfo->score < $lottory_score){
+            return response()->json(["status"=>0,"msg"=>"抽奖机会不足"]);
+        }
+        $rewards_pre = DB::table('act_rewards_log')
+            ->where(['pre' => 1])
+            ->where(['user_id' => $this->user_id])
+            ->first();
+        if ($rewards_pre) {
+            $data = [
+                'id' => $rewards_pre->id,
+                'user_id' => $this->user_id,
+                'reward_id' => $rewards_pre->reward_id,
+                'reward_name' => $rewards_pre->reward_name,
+                'reward_time' => time(),
+                'reward_date' => date('Y-m-d'),
+                'pre' => 0,
+            ];
+            DB::table('act_rewards_log')
+                ->where('id', $rewards_pre->id)
+                ->update($data);
+
+            unset($data['pre']);
+            //扣除积分
+            $this->change_score_by_user_id($this->user_id, $lottory_score, 2, 2);
+            return response()->json(["status"=>0,"msg"=>"", 'rewards' => $data]);
+        } else {
+            $rewards_lists = DB::table('act_rewards')
+                ->where(['disabled' => 0,'type' => $type])
+                ->where('stock', '>', 0)
+                ->select('id', 'name', 'img', 'ratio', 'money', 'score')
+                ->get();
+            $rewards_lists = json_decode(json_encode($rewards_lists), true);
+            if (count($rewards_lists) == 0) {
+                return response()->json(["status"=>0,"msg"=>"活动暂停"]);
+            }
+
+            $rid = 0;
+            $name = '';
+            $money = 0;
+            $score = '';
+            $weight = 0;
+            $type = 0;
+            foreach ($rewards_lists as $val) {
+                $weight += $val['ratio']; //概率数组的总概率精度
+            }
+
+            if ($weight == 0) {
+                return response()->json(["status"=>0,"msg"=>"活动暂停"]);
+            }
+            shuffle($rewards_lists);
+            foreach ($rewards_lists as $value) {
+                $randNum = mt_rand(1, $weight);
+                if ($randNum <= $value['ratio']) {
+                    $rid = $value['id'];
+                    $name = $value['name'];
+                    $money = $value['money'];
+                    $score = $value['score'];
+                    $type = $value['type'];
+                    break;
+                } else {
+                    $weight -= $value['ratio'];
+                }
+            }
+
+            $data = [
+                'user_id' => $this->user_id,
+                'reward_id' => $rid,
+                'reward_name' => $name,
+                'reward_time' => time(),
+                'reward_date' => date('Y-m-d'),
+            ];
+
+            $data['virtual'] = ($money > 0 || $score > 0) ? true : false;
+            DB::table('act_rewards')->where(['id' => $rid])->decrement('stock', 1);;
+            $res = DB::table('act_rewards_log')->insertGetId($data);
+            $data['id'] = $res;
+            if ($money > 0 && $type == 1) {
+                $Member = Member::find($this->user_id);
+                $amount = $Member->ktx_amount;
+                $Member->increment('ktx_amount', $money);
+                $log = [
+                    "userid" => $this->user_id,
+                    "username" => $this->userInfo->username,
+                    "money" => $money,
+                    "notice" => "抽奖获得",
+                    "type" => "抽奖",
+                    "status" => "+",
+                    "yuanamount" => $amount,
+                    "houamount" =>$Member->ktx_amount,
+                    "ip" => \Request::getClientIp(),
+                    "recharge_id"=>0,
+                ];
+                \App\Moneylog::AddLog($log);
+            }
+            if (!empty($score) && $type == 2) {
+//                $this->change_score_by_user_id($this->user_id, $score, 1, 2);
+                $travelData = [
+                    'userid'=>$this->userInfo->id,
+                    'username'=>$this->userInfo->username,
+                    'travel_id'=>$rid,
+                    'travel_name'=>$name,
+                    'from_type'=>1,
+                    'status'=>1,
+                    'is_read'=>0,
+                    'created_at'=>Carbon::now()
+                ];
+                DB::table('travellog')->insert($travelData);
+            }
+            //扣除积分
+            $this->change_score_by_user_id($this->user_id, $lottory_score, 2, 2);
+            return response()->json(["status"=>0,"msg"=>"", 'rewards' => $data]);
+        }
+    }
+
 	//抽奖
-	public function lottory(Request $request) {
-		if (!$this->user_id) {
-			return response()->json(["status"=>-1,"msg"=>"请先登录！"]);
-		}
-         $Member1 = Member::find($this->user_id);
-
-		$lottory_score = 1000;
-
-		if ($this->userInfo->score < $lottory_score) {
-			return response()->json(["status"=>-1,"msg"=>"积分不足，1000积分才可以抽奖！"]);
-		}
-        $nowdate = date('Y-m-d');
-//        $loginfo = DB::table('act_rewards_log')
-//        ->where('user_id', $this->user_id)
-//            ->where('reward_date', $nowdate)
-//            ->first();
-//        if(!empty($loginfo)){
-//            return response()->json(["status"=>-1,"msg"=>"今天已经抽过奖！"]);
-//        }
-		//查询是否有设置的中奖记录
-		$rewards_pre = DB::table('act_rewards_log')
-			->where(['pre' => 1])
-			->where(['user_id' => $this->user_id])
-			->first();
-
-		if ($rewards_pre) {
-			$data = [
-				'id' => $rewards_pre->id,
-				'user_id' => $this->user_id,
-				'reward_id' => $rewards_pre->reward_id,
-				'reward_name' => $rewards_pre->reward_name,
-				'reward_time' => time(),
-				'reward_date' => date('Y-m-d'),
-				'pre' => 0,
-			];
-			DB::table('act_rewards_log')
-			->where('id', $rewards_pre->id)
-			->update($data);
-
-			unset($data['pre']);
-			//扣除积分
-			$this->change_score_by_user_id($this->user_id, $lottory_score, 2, 2);
-			return response()->json(["status"=>0,"msg"=>"", 'rewards' => $data]);
-		} else {
-			$rewards_lists = DB::table('act_rewards')
-				->where(['disabled' => 0])
-				->where('stock', '>', 0)
-				->select('id', 'name', 'img', 'ratio', 'money', 'score')
-				->get();
-			$rewards_lists = json_decode(json_encode($rewards_lists), true);
-			if (count($rewards_lists) == 0) {
-				return response()->json(["status"=>-1,"msg"=>"活动暂停"]);
-			}
-
-			$rid = 0;
-			$name = '';
-			$money = 0;
-			$score = 0;
-			$weight = 0;
-			foreach ($rewards_lists as $val) {
-				$weight += $val['ratio']; //概率数组的总概率精度
-			}
-
-			if ($weight == 0) {
-				return response()->json(["status"=>-1,"msg"=>"活动暂停"]);
-			}
-
-
-			shuffle($rewards_lists);
-			foreach ($rewards_lists as $key => $value) {
-				$randNum = mt_rand(1, $weight);
-				if ($randNum <= $value['ratio']) {
-					$rid = $value['id'];
-					$name = $value['name'];
-					$money = $value['money'];
-					$score = $value['score'];
-					break;
-				} else {
-					$weight -= $value['ratio'];
-				}
-			}
-
-			$data = [
-				'user_id' => $this->user_id,
-				'reward_id' => $rid,
-				'reward_name' => $name,
-				'reward_time' => time(),
-				'reward_date' => date('Y-m-d'),
-			];
-
-			$data['virtual'] = ($money > 0 || $score > 0) ? true : false;
-			DB::table('act_rewards')->where(['id' => $rid])->decrement('stock', 1);;
-			$res = DB::table('act_rewards_log')->insertGetId($data);
-			$data['id'] = $res;
-
-			if ($money > 0) {
-				$Member = Member::find($this->user_id);
-				$amount = $Member->ktx_amount;
-				$Member->increment('ktx_amount', $money);
-				$Member->save();
-				$log = [
-					"userid" => $this->user_id,
-					"username" => $this->userInfo->username,
-					"money" => $money,
-					"notice" => "抽奖获得",
-					"type" => "抽奖",
-					"status" => "+",
-					"yuanamount" => $amount,
-					"houamount" =>$Member->ktx_amount,
-					"ip" => \Request::getClientIp(),
-					"recharge_id"=>0,
-				];
-				\App\Moneylog::AddLog($log);
-			}
-
-			if ($score > 0) {
-				$this->change_score_by_user_id($this->user_id, $score, 1, 2);
-			}
-            $Member = Member::find($this->user_id);
-             if($Member->rw_level>=4){
-                 $Member->increment('cj_num', 1);
-            }
-
-            $cj_num = DB::table("setings")->where('keyname','cj_num')->value('value');//抽奖次数
-
-            if($Member->rw_level ==4 && $Member->cj_num >=$cj_num){
-                $Member= Member::where('state',1)->find($this->user_id);
-                $Member->rw_level =5;
-                $Member->save();
-                $lx_qd = DB::table("setings")->where('keyname','lx_qd')->value('value');//联系签到
-                 if($Member->rw_level ==5 && $Member->lx_qd >=$lx_qd){
-                     $Member->rw_level = 6;
-                     $Member->save();
-                 }
-            }
-			//扣除积分
-			$this->change_score_by_user_id($this->user_id, $lottory_score, 2, 2);
-			return response()->json(["status"=>0,"msg"=>"", 'rewards' => $data]);
-		}
-
-
-
-
-	}
+//	public function lottory(Request $request) {
+//		if (!$this->user_id) {
+//			return response()->json(["status"=>-1,"msg"=>"请先登录！"]);
+//		}
+//		$lottory_score = 1000;
+//		if ($this->userInfo->score < $lottory_score) {
+//			return response()->json(["status"=>-1,"msg"=>"积分不足，1000积分才可以抽奖！"]);
+//		}
+//        $nowdate = date('Y-m-d');
+////        $loginfo = DB::table('act_rewards_log')
+////        ->where('user_id', $this->user_id)
+////            ->where('reward_date', $nowdate)
+////            ->first();
+////        if(!empty($loginfo)){
+////            return response()->json(["status"=>-1,"msg"=>"今天已经抽过奖！"]);
+////        }
+//		//查询是否有设置的中奖记录
+//		$rewards_pre = DB::table('act_rewards_log')
+//			->where(['pre' => 1])
+//			->where(['user_id' => $this->user_id])
+//			->first();
+//
+//		if ($rewards_pre) {
+//			$data = [
+//				'id' => $rewards_pre->id,
+//				'user_id' => $this->user_id,
+//				'reward_id' => $rewards_pre->reward_id,
+//				'reward_name' => $rewards_pre->reward_name,
+//				'reward_time' => time(),
+//				'reward_date' => date('Y-m-d'),
+//				'pre' => 0,
+//			];
+//			DB::table('act_rewards_log')
+//			->where('id', $rewards_pre->id)
+//			->update($data);
+//
+//			unset($data['pre']);
+//			//扣除积分
+//			$this->change_score_by_user_id($this->user_id, $lottory_score, 2, 2);
+//			return response()->json(["status"=>0,"msg"=>"", 'rewards' => $data]);
+//		} else {
+//			$rewards_lists = DB::table('act_rewards')
+//				->where(['disabled' => 0])
+//				->where('stock', '>', 0)
+//				->select('id', 'name', 'img', 'ratio', 'money', 'score')
+//				->get();
+//			$rewards_lists = json_decode(json_encode($rewards_lists), true);
+//			if (count($rewards_lists) == 0) {
+//				return response()->json(["status"=>-1,"msg"=>"活动暂停"]);
+//			}
+//
+//			$rid = 0;
+//			$name = '';
+//			$money = 0;
+//			$score = 0;
+//			$weight = 0;
+//			foreach ($rewards_lists as $val) {
+//				$weight += $val['ratio']; //概率数组的总概率精度
+//			}
+//
+//			if ($weight == 0) {
+//				return response()->json(["status"=>-1,"msg"=>"活动暂停"]);
+//			}
+//
+//
+//			shuffle($rewards_lists);
+//			foreach ($rewards_lists as $value) {
+//				$randNum = mt_rand(1, $weight);
+//				if ($randNum <= $value['ratio']) {
+//					$rid = $value['id'];
+//					$name = $value['name'];
+//					$money = $value['money'];
+//					$score = $value['score'];
+//					break;
+//				} else {
+//					$weight -= $value['ratio'];
+//				}
+//			}
+//
+//			$data = [
+//				'user_id' => $this->user_id,
+//				'reward_id' => $rid,
+//				'reward_name' => $name,
+//				'reward_time' => time(),
+//				'reward_date' => date('Y-m-d'),
+//			];
+//
+//			$data['virtual'] = ($money > 0 || $score > 0) ? true : false;
+//			DB::table('act_rewards')->where(['id' => $rid])->decrement('stock', 1);;
+//			$res = DB::table('act_rewards_log')->insertGetId($data);
+//			$data['id'] = $res;
+//
+//			if ($money > 0) {
+//				$Member = Member::find($this->user_id);
+//				$amount = $Member->ktx_amount;
+//				$Member->increment('ktx_amount', $money);
+//				$Member->save();
+//				$log = [
+//					"userid" => $this->user_id,
+//					"username" => $this->userInfo->username,
+//					"money" => $money,
+//					"notice" => "抽奖获得",
+//					"type" => "抽奖",
+//					"status" => "+",
+//					"yuanamount" => $amount,
+//					"houamount" =>$Member->ktx_amount,
+//					"ip" => \Request::getClientIp(),
+//					"recharge_id"=>0,
+//				];
+//				\App\Moneylog::AddLog($log);
+//			}
+//
+//			if ($score > 0) {
+//				$this->change_score_by_user_id($this->user_id, $score, 1, 2);
+//			}
+//            $Member = Member::find($this->user_id);
+//             if($Member->rw_level>=4){
+//                 $Member->increment('cj_num', 1);
+//            }
+//
+//            $cj_num = DB::table("setings")->where('keyname','cj_num')->value('value');//抽奖次数
+//
+//            if($Member->rw_level ==4 && $Member->cj_num >=$cj_num){
+//                $Member= Member::where('state',1)->find($this->user_id);
+//                $Member->rw_level =5;
+//                $Member->save();
+//                $lx_qd = DB::table("setings")->where('keyname','lx_qd')->value('value');//联系签到
+//                 if($Member->rw_level ==5 && $Member->lx_qd >=$lx_qd){
+//                     $Member->rw_level = 6;
+//                     $Member->save();
+//                 }
+//            }
+//			//扣除积分
+//			$this->change_score_by_user_id($this->user_id, $lottory_score, 2, 2);
+//			return response()->json(["status"=>0,"msg"=>"", 'rewards' => $data]);
+//		}
+//	}
 
 
 	//获取中奖列表

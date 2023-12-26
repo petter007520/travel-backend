@@ -47,6 +47,13 @@
         </div>
     </div>
     <div class="layui-form-item">
+        <label class="layui-form-label col-sm-1">类型</label>
+        <div class="layui-input-inline">
+            <input type="radio" name="type" value="1" title="现金盲盒" checked="checked">
+            <input type="radio" name="type" value="2" title="旅游盲盒">
+        </div>
+    </div>
+    <div class="layui-form-item">
         <label class="layui-form-label col-sm-1">奖品图片</label>
         <div class="layui-col-md6">
             <button type="button" class="layui-btn" id="thumb_url" style="float:left;">

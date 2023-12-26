@@ -106,62 +106,6 @@
                 </label>
             </div>
         </div>
-{{--    <div class="layui-form-item">--}}
-{{--        <label class="layui-form-label col-sm-1">对碰倍数</label>--}}
-{{--        <div class="layui-input-inline">--}}
-{{--            <label>--}}
-{{--                <input type="text" name="collision_times" placeholder="对碰倍数" autocomplete="off" class="layui-input" value="">--}}
-{{--            </label>--}}
-{{--        </div>--}}
-{{--    </div>--}}
-{{--    <div class="layui-form-item">--}}
-{{--        <label class="layui-form-label col-sm-1">中奖财富力(普通)</label>--}}
-{{--        <div class="layui-input-inline">--}}
-{{--            <label>--}}
-{{--                <input type="text" name="lottery_rate" placeholder="中奖财富力(普通中奖者出局倍数)" autocomplete="off" class="layui-input" value="">--}}
-{{--            </label>--}}
-{{--        </div>--}}
-{{--    </div>--}}
-{{--    <div class="layui-form-item">--}}
-{{--        <label class="layui-form-label col-sm-1">中奖财富力(星级)</label>--}}
-{{--        <div class="layui-input-inline">--}}
-{{--            <label>--}}
-{{--                <input type="text" name="lottery_star_rate" placeholder="中奖财富力(星级中奖者出局倍数)" autocomplete="off" class="layui-input" value="">--}}
-{{--            </label>--}}
-{{--        </div>--}}
-{{--    </div>--}}
-{{--    <div class="layui-form-item">--}}
-{{--        <label class="layui-form-label col-sm-1">开奖周期(天)</label>--}}
-{{--        <div class="layui-input-inline">--}}
-{{--            <label>--}}
-{{--                <input type="text" name="lottery_cycle" placeholder="开奖周期(天)" autocomplete="off" class="layui-input" value="">--}}
-{{--            </label>--}}
-{{--        </div>--}}
-{{--    </div>--}}
-{{--    <div class="layui-form-item">--}}
-{{--        <label class="layui-form-label col-sm-1">中奖人数(订单数少于抽奖人数，则不开奖)</label>--}}
-{{--        <div class="layui-input-inline">--}}
-{{--            <label>--}}
-{{--                <input type="text" name="lottery_num" placeholder="抽奖人数(订单数少于抽奖人数，则不开奖)" autocomplete="off" class="layui-input" value="">--}}
-{{--            </label>--}}
-{{--        </div>--}}
-{{--    </div>--}}
-{{--    <div class="layui-form-item">--}}
-{{--        <label class="layui-form-label col-sm-1">下次开奖日期</label>--}}
-{{--        <div class="layui-input-inline">--}}
-{{--            <label>--}}
-{{--                <input type="text" name="next_lottery_time" placeholder="下次开奖日期" autocomplete="off" class="layui-input" value="">--}}
-{{--            </label>--}}
-{{--        </div>--}}
-{{--    </div>--}}
-{{--    <div class="layui-form-item layui-form-text">--}}
-{{--        <label class="layui-form-label col-sm-1">内定中奖用户(多个用户请用|隔开)</label>--}}
-{{--        <div class="layui-input-block">--}}
-{{--            <label>--}}
-{{--                <textarea placeholder="内定中奖用户(多个用户请用|隔开)" class="layui-textarea" name="list"></textarea>--}}
-{{--            </label>--}}
-{{--        </div>--}}
-{{--    </div>--}}
     <div class="layui-form-item">
         <label class="layui-form-label col-sm-1">财富等级</label>
         <div class="layui-input-inline">

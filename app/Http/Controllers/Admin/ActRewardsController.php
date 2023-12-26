@@ -1,19 +1,7 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: Xu
- * Date: 2022/11/2
- * Time: 22:09
- */
-
 namespace App\Http\Controllers\Admin;
-
-
-use App\Member;
-use DB;
 use Illuminate\Http\Request;
-use Session;
-use Cache;
+use Illuminate\Support\Facades\DB;
 
 class ActRewardsController extends BaseController
 {
@@ -27,11 +15,11 @@ class ActRewardsController extends BaseController
     public function lists(Request $request)
     {
         $pagesize = 10;//默认分页数
-        
+
         $list = DB::table($this->table)
 			->orderBy("id", "desc")
             ->paginate($pagesize);
-			
+
         if ($request->ajax()) {
             if ($list) {
                 return ["status" => 0, "list" => $list, "pagesize" => $pagesize];
@@ -47,7 +35,7 @@ class ActRewardsController extends BaseController
             $data = $request->all();
 			unset($data['_token']);
 			unset($data['thumb']);
-            $res = DB::table($this->table)->insert($data);
+            DB::table($this->table)->insert($data);
             if ($request->ajax()) {
                 return response()->json([
                     "msg" => "添加成功", "status" => 0
@@ -59,8 +47,8 @@ class ActRewardsController extends BaseController
             return $this->ShowTemplate();
         }
     }
-	
-	
+
+
 	public function update(Request $request)
     {
         if ($request->isMethod("post")) {
@@ -81,8 +69,8 @@ class ActRewardsController extends BaseController
             return $this->ShowTemplate(["edit" => $Model, "status" => 0]);
         }
     }
-	
-	
+
+
 	public function delete(Request $request)
     {
         if ($request->isMethod("post")) {

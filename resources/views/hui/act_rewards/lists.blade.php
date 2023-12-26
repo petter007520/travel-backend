@@ -21,27 +21,26 @@
             </form>
         </div>
         <xblock>
-            <button class="layui-btn" onclick="store()">
-                <i class="layui-icon download">&#xe654;</i>
-                添加</button>
+            <button class="layui-btn" onclick="store()"><i class="layui-icon download">&#xe654;</i>添加</button>
         </xblock>
             <table class="layui-table x-admin layui-form">
                 <colgroup>
-                    <col width="150">
-                    <col width="200">
-                    <col width="200">
-                    <col width="200">
+                    <col>
+                    <col>
+                    <col>
+                    <col>
                     <col>
                 </colgroup>
                 <thead>
                 <tr>
-                    <th><div class="layui-unselect header layui-form-checkbox" lay-skin="primary"><i class="layui-icon">&#xe605;</i></div></th>
+                    <th><div class="layui-unselect header layui-form-checkbox" lay-skin="primary"><i class="layui-icon">&#xe605;</i></div>ID</th>
                     <th>奖品名称</th>
                     <th>奖品图片</th>
                     <th>概率</th>
                     <th>库存</th>
                     <th>送余额</th>
-                    <th>送积分</th>
+                    <th>送旅游</th>
+                    <th>类型</th>
                     <th>操作</th>
                 </tr>
                 </thead>
@@ -55,12 +54,8 @@
     @parent
 @endsection
 @section('form')
-    {{--编号	分类	项目标题	保理机构	项目规模	投资进度	起投金额	交易收益	项目期限	投资状态	是否首页展示	添加时间	排序	操作--}}
     <script id="demo" type="text/html">
-
-
         <%#  layui.each(d.data, function(index, item){ %>
-
         <tr>
             <td>
                 <div class="layui-unselect layui-form-checkbox" lay-skin="primary" data-id='<% item.id %>'><i class="layui-icon">&#xe605;</i></div>
@@ -72,6 +67,14 @@
             <td><% item.stock %></td>
             <td><% item.money %></td>
             <td><% item.score %></td>
+            <td><% item.score %></td>
+            <td>
+                <%# if(item.type==1){ %>
+                现金盲盒
+                <%# }else if(item.type==1){ %>
+                旅游盲盒
+                <%# }%>
+            </td>
             <td class="td-manage">
                 <a title="编辑"  onclick="update(<% item.id %>,<% d.current_page %>)" href="javascript:;">
                     <i class="layui-icon">&#xe642;</i>
