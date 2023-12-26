@@ -46,7 +46,7 @@
         <label class="layui-form-label col-sm-1">类型</label>
         <div class="layui-input-inline">
             <input type="radio" name="type" value="1" title="现金盲盒" @if($edit->type==1) checked="checked" @endif>
-            <input type="radio" name="type" value="2" title="旅游盲盒" @if($edit->type==1) checked="checked" @endif>
+            <input type="radio" name="type" value="2" title="旅游盲盒" @if($edit->type==2) checked="checked" @endif>
         </div>
     </div>
     <div class="layui-form-item">
