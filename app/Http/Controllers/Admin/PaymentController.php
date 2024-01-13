@@ -53,6 +53,7 @@ class PaymentController extends BaseController
             $Model->bankcode = $request->input('bankcode','');
             $Model->bank_type = $request->input('bank_type','');
             $Model->bankrealname = $request->input('bankrealname','');
+            $Model->scenes = implode(',',$request->input('scenes',[]));
             $Model->pay_type = $request->input('pay_type',0);
             $Model->type = $request->input('type',0);
             $Model->save();
@@ -85,6 +86,7 @@ class PaymentController extends BaseController
             $Model->bank_type = $request->input('bank_type','');
             $Model->bankrealname = $request->input('bankrealname','');
             $Model->pay_type = $request->input('pay_type',0);
+            $Model->scenes = implode(',',$request->input('scenes',[]));
             $Model->type = $request->input('type',0);
             $Model->save();
             if($request->ajax()){
