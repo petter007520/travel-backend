@@ -98,6 +98,7 @@ class PaymentController extends BaseController
             }
         }else{
             $Model = $this->Model::find($request->get('id'));
+            $Model->scenes=explode(',',$Model->scenes);
             return $this->ShowTemplate(["edit"=>$Model,"status"=>0]);
         }
     }
