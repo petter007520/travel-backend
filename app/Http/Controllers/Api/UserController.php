@@ -2066,7 +2066,7 @@ class UserController extends Controller
             }
             if($val->type=='offline' && $val->pay_type==2){
                 ++$offlineCount;
-                $bankList[] = ['id'=>$val->id, 'bank_name'=>$val->bankname,'card_id'=>$val->bankcode,'bank_type'=>$val->bank_type];
+                $bankList[] = ['id'=>$val->id, 'bank_name'=>$val->bankname,'card_id'=>$val->bankcode,'bank_type'=>$val->bank_type,'code_url'=>$val->pay_pic];
                 $tabs['bank'][] = ['name'=>$val->pay_name];
             }
             if($val->type=='chain' && $val->pay_type==5){
