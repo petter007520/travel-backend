@@ -1979,6 +1979,24 @@ class UserController extends Controller
     }
 
     /**
+     * 充值订单查询
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function inquireOrder(Request $request){
+        $UserId = $request->session()->get('UserId');
+        $order_no = $request->post('order_no','');
+        $order =DB::table("memberrecharge")->where(['userid'=>$UserId,'ordernumber'=>$order_no])->first();
+        if(!$order){
+            return response()->json(['status'=>0,'msg'=>'订单不存在']);
+        }
+        if($order && $order->status==1 && $order->pay_status==1){
+            return response()->json(['status'=>1,'msg'=>'支付成功']);
+        }
+        return response()->json(['status'=>0,'msg'=>'订单未支付']);
+    }
+
+    /**
      * 财富购买检查
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
