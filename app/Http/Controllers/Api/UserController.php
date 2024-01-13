@@ -1823,12 +1823,18 @@ class UserController extends Controller
         if($this->Member->state != 1){
             return response()->json(["status" => 0, "msg" => "会员关系树未处理完成，请售后购买财富计划！"]);
         }
-        if (!in_array($pay_type,[1,2,3,4,5])) {
-            return response()->json(["status" => 0, "msg" => "付款方式不支持"]);
+//        if (!in_array($pay_type,[1,2,3,4,5])) {
+//            return response()->json(["status" => 0, "msg" => "付款方式不支持"]);
+//        }
+        if ($this->Member->is_auth !=1) {
+            return response()->json(["status" => 0, "msg" => "请完成实名认证后购买"]);
         }
-        if( in_array($pay_type,[2,5]) && empty($pay_img)){
-            return response()->json(["status" => 0, "msg" => "付款凭证不能为空！！"]);
+        if ($pay_type != 1) {
+            return response()->json(["status" => 0, "msg" => "仅支持余额购买"]);
         }
+//        if( in_array($pay_type,[2,5]) && empty($pay_img)){
+//            return response()->json(["status" => 0, "msg" => "付款凭证不能为空！！"]);
+//        }
         //购买产品
         $product = DB::table("products")
             ->where(['id' => $product_id,'status'=>1])
@@ -1872,16 +1878,16 @@ class UserController extends Controller
                 if($pay_pwd != \App\Member::DecryptPassWord($Member->paypwd)){
                     return response()->json(["status" => 0, "msg" => "支付密码错误！"]);
                 }
-                if ($real_amount > $Member->ktx_amount) {
-                    return response()->json(["status" => 0, "msg" => "余额不足,请充值,当前余额：" . $Member->ktx_amount]);
+                if ($real_amount > $Member->amount) {
+                    return response()->json(["status" => 0, "msg" => "余额不足,请充值,当前余额：" . $Member->amount]);
                 }
                 $Member = Member::where(['state'=>1])->lockForUpdate()->find($UserId);
-                if (($Member->ktx_amount - $real_amount) < 0 ) {
+                if (($Member->amount - $real_amount) < 0 ) {
                     DB::rollBack();
                     return response()->json(["status" => 0, "msg" => "余额不足,请充值"]);
                 }
-                $yuanamount = $Member->ktx_amount;
-                $Member->decrement('ktx_amount', $real_amount);
+                $yuanamount = $Member->amount;
+                $Member->decrement('amount', $real_amount);
                 $log = [
                     "userid" => $Member->id,
                     "username" => $Member->username,
@@ -1890,7 +1896,7 @@ class UserController extends Controller
                     "type" => "购买财富,余额付款",
                     "status" => "-",
                     "yuanamount" => $yuanamount,
-                    "houamount" => $Member->ktx_amount,
+                    "houamount" => $Member->amount,
                     "ip" => $ip,
                     "category_id" => $product->category_id,
                     "product_id" => $product->id,

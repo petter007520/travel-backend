@@ -80,7 +80,10 @@ class MoneyController extends Controller
         $payment_id = $request->post('payment_id',0);
         $payment = Payment::where(['id'=>$payment_id,'enabled'=>1])->first();
         if(!$payment){
-            return response()->json(["status"=>0, "msg"=>"充值方式错误"]);
+            return response()->json(["status"=>0, "msg"=>"充值方式已关闭"]);
+        }
+        if(!in_array('recharge',explode(',',$payment->scenes))){
+            return response()->json(["status"=>0, "msg"=>"当前支付不支持充值"]);
         }
         if(in_array($payment->type,['offline','chain']) && empty($payment_certificate)){
             return response()->json(["status"=>0, "msg"=>"请上传支付凭证"]);
@@ -95,9 +98,11 @@ class MoneyController extends Controller
             $usdt_amount = round($amount/$payment->bank_type,2);
             $memo = $payment->pay_name.'支付方式充值'.$amount.'RMB(USDT汇率：'.$payment->bank_type.';到账金额：'.$usdt_amount.'USDT)';
         }
+        $order_no = 'RC'.date("YmdHis").$this->get_random_no(7);
          Memberrecharge::Recharge([
             "userid"=>$UserId, //会员ID
             "amount"=>$amount,//金额
+             "ordernumber"=> $order_no,
             "usdt_amount"=>$usdt_amount,//金额
             "memo"=>$memo,//备注
             "paymentid"=>$payment_id,//充值方式
@@ -118,11 +123,34 @@ class MoneyController extends Controller
         ];
         \App\Membermsg::Send($msg);
 
-        //在线支付
-        if($payment->type == 'online'){
-            return response()->json(["status"=>1, "msg"=>"在线支付",'data'=>'']);
+        //银行卡|USDT支付
+        if(in_array($payment->pay_type,[2,5])){
+            return response()->json(["status"=>1, "msg"=>"提交成功","type"=>'offline']);
         }
-        return response()->json(["status"=>1, "msg"=>"申请提交成功"]);
+
+        //在线支付
+        if(in_array($payment->pay_type,[3,4])){
+            $data = ['payUrl'=>'https://www.baidu.com','order_no'=>$order_no];
+            return response()->json(["status"=>1, "msg"=>"提交成功",'data'=>$data,"type"=>'online']);
+        }
+        return response()->json(["status"=>0, "msg"=>"充值获取支付方式失败"]);
+    }
+
+    function get_random_no($num)
+    {
+        $codeSeeds = "1234567890";
+        $len = strlen($codeSeeds);
+        $ban_num = ($num / 2) - 3;
+        $code = "";
+        for ($i = 0; $i < $num; $i++) {
+            $rand = rand(0, $len - 1);
+            if ($i == $ban_num) {
+                $code .= 'O';
+            } else {
+                $code .= $codeSeeds[$rand];
+            }
+        }
+        return $code;
     }
 
     //等级信息
