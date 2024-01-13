@@ -113,12 +113,14 @@ class UserController extends Controller
             $usdt_rate = DB::table("setings")->where(['keyname'=>'usdt_rate'])->value('value');
             Cache::forever('usdt_rate', $usdt_rate);
         }
-        $data['total_amount'] = $this->Member->ktx_amount + round($this->Member->usdt_amount*$usdt_rate,2); //总资产
-        $data['rmb_amount'] = $this->Member->ktx_amount; //现金资产
+//        $data['total_amount'] = $this->Member->ktx_amount + round($this->Member->usdt_amount*$usdt_rate,2); //总资产
+        $data['total_amount'] = number_format(($this->Member->ktx_amount+$this->Member->amount),2); //总资产
+        $data['ktx_amount'] = $this->Member->ktx_amount; //收益余额
+        $data['recharge_amount'] = $this->Member->amount; //充值余额
         $data['usdt_amount'] = $this->Member->usdt_amount; //USDT资产
         $data['balance'] = number_format($this->Member->collision_amount - $this->Member->collision_amount_finsh,2);//剩余出局额度
         $data['hold'] = $hold = DB::table('productbuy')->where(['userid'=>$this->Member->id,'status'=>1])->first(['id','productid','amount']);
-        $data['hold_name'] = $hold ? DB::table('products')->where(['id'=>$hold->id])->value('title') :'';
+        $data['hold_name'] = $hold ? DB::table('products')->where(['id'=>$hold->productid])->value('title') :'';
         $data['total_achievement'] = number_format($this->Member->left_amount_show+$this->Member->right_amount_show, '2');//左右区业绩
         $data['left_achievement'] = $this->Member->left_amount_show;//左区业绩
         $data['right_achievement'] = $this->Member->right_amount_show;//右区业绩
@@ -2029,11 +2031,13 @@ class UserController extends Controller
      * @return \Illuminate\Http\JsonResponse
      */
     public function change_pay(Request $request){
-        $type = $request->get('type','buy');
+        $type = $request->get('type','');
         $listDb = DB::table('payment')->select('id','pay_name','pay_pic','bankname','bankrealname','bankcode','is_default','pay_type','type','bank_type')->where(['enabled'=>1]);
         $rechargeTips = '';
+        if(!empty($type)){
+            $listDb->whereRaw('FIND_IN_SET(?,scenes)',[$type]);
+        }
         if($type == 'recharge'){
-            $listDb->where('pay_code','!=','wallet');
             //充值提示
             $rechargeTips = DB::table('articles')->where(['id'=>52])->value('content');
         }

@@ -126,6 +126,16 @@
     </div>
 
     <div class="layui-form-item">
+        <label class="layui-form-label col-sm-1">支付场景</label>
+        <div class="layui-input-block">
+            <label>
+                <input type="checkbox" name="scenes" value="order" title="订单购买">
+                <input type="checkbox" name="scenes" value="recharge" title="充值">
+            </label>
+        </div>
+    </div>
+
+    <div class="layui-form-item">
         <label class="layui-form-label col-sm-1">说明</label>
         <div class="layui-input-block">
             <label>

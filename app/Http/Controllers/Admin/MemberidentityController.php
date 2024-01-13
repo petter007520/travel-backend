@@ -84,12 +84,13 @@ class MemberidentityController extends BaseController
             DB::table($this->table)->where(['id' => $request->input("id")])->update($data);
 
             $check = DB::table('member')->where(['id' => $identityInfo->userid])->value('is_auth');
-            if($data['status'] == 1 && !$check){
+            if($data['status']==1){
                 $userData['realname'] = $identityInfo->realname;
                 $userData['card'] = $identityInfo->idnumber;
                 $userData['is_auth'] = 1;
                 DB::table('member')->where(['id' => $identityInfo->userid])->update($userData);
-
+            }
+            if($data['status'] == 1 && !$check){
                 $regist_amount = DB::table('setings')->where(['keyname'=>'regist_gift'])->value('value');//注册赠送金额
                 if($regist_amount>0){
                     $member->increment('ktx_amount',$regist_amount);
@@ -115,6 +116,7 @@ class MemberidentityController extends BaseController
             }else{
                 $userData['realname'] = '';
                 $userData['card'] = '';
+                $userData['is_auth'] = 0;
                 DB::table('member')->where(['id' => $identityInfo->userid])->update($userData);
             }
 

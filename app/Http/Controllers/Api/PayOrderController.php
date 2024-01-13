@@ -98,9 +98,13 @@ class PayOrderController extends Controller
                             break;
                         }
                         //分成钱数
-                        $rateMoney = intval($pro_buy_data->real_amount * $recent->percent / 100);
+                        $reward_income = $rateMoney = intval($pro_buy_data->real_amount * $recent->percent / 100);
                         // 计算本次分成真实金额
                         $rewardMoney = self::get_real_amount($ShangjiaMember->id, $rateMoney);
+                        $game_over_tip = '';
+                        if($rewardMoney < $reward_income){
+                            $game_over_tip = '[出局]';
+                        }
                         if($rewardMoney > 0) {
                             $title = "尊敬的{$ShangjiaMember->username}会员您好！您的{$recent->name}分成已到账";
                             $content = "直推下线{$buyman}购买项目成功,{$rewardMoney}元已赠送到您的账号,当前的提成比例为" . $recent->percent . "%";
@@ -118,7 +122,7 @@ class PayOrderController extends Controller
                             $MOamount = $ShangjiaMember->ktx_amount;
 
                             $ShangjiaMember->increment('ktx_amount', $rewardMoney);
-                            $notice = "下线(" . $Member->username . ")购买(" . $product->title . ")返佣";
+                            $notice = "下线(" . $Member->username . ")购买(" . $product->title . ")返佣".$game_over_tip;
                             $log = [
                                 "userid" => $ShangjiaMember->id,
                                 "username" => $ShangjiaMember->username,

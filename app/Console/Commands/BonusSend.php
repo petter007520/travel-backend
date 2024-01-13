@@ -117,9 +117,13 @@ class BonusSend extends Command
                         $nowcishu = (int)$value->useritem_count;//收益次数
                         //判断 收益次数是否大于项目到期天数，当前时间是否小于下次收益时间
                             //计算日收益
-                            $money = floatval($this->Products[$pid]->income_rate * $value->amount / 100);  //每日静态收益
+                            $income = $money = floatval($this->Products[$pid]->income_rate * $value->amount / 100);  //每日静态收益
                             //计算实际应得静态收益
                             $money = PayOrderController::get_real_amount($userid,$money);
+                            $game_over_tip = '';
+                            if($money < $income){
+                                $game_over_tip = '[出局]';
+                            }
                             if($money > 0) {
                                 DB::beginTransaction();
                                 try {
@@ -133,7 +137,7 @@ class BonusSend extends Command
                                         DB::table("productbuy")->where("id", $buyid)->update($data);
                                         //金额记录日志
                                         $projectName = $this->Products[$pid]->title;
-                                        $notice = '静态收益-(' . $projectName . ')';
+                                        $notice = '静态收益-(' . $projectName . ')'.$game_over_tip;
                                         $amountFH = round($money, 2);//日收益金额 加日志
 
                                         $BuyMember_id = $BuyMember->id;

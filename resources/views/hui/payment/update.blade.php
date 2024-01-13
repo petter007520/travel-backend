@@ -139,6 +139,14 @@
     </div>
 
     <div class="layui-form-item">
+        <label class="layui-form-label col-sm-1">支付场景</label>
+        <div class="layui-input-block">
+            <input type="checkbox" name="scenes[]" value="order" title="订单支付" @if($edit->scenes && in_array('order',$edit->scenes)) checked @endif>
+            <input type="checkbox" name="scenes[]" value="recharge" title="充值" @if($edit->scenes && in_array('recharge',$edit->scenes)) checked @endif>
+        </div>
+    </div>
+
+    <div class="layui-form-item">
         <label class="layui-form-label col-sm-1">状态</label>
         <div class="layui-input-block">
             <input type="radio" name="enabled" value="1" title="启用" @if($edit->enabled==1)checked="checked"@endif>

@@ -161,6 +161,7 @@ class CollisionReward implements ShouldQueue
                             $before_left_balance = $topmemeber->left_blance;
                             $before_right_balance = $topmemeber->right_blance;
                             $collision_amount = 0;
+                            $reward_income = 0;
                             $notice = '';
                             $mark_amount = '';
                             $level_amount_remark = '';
@@ -169,7 +170,7 @@ class CollisionReward implements ShouldQueue
                                 //左区的业绩余额小于右区的业绩金额(即用户在左区且左区为小区，则产生对碰)
                                 if ($topmemeber->left_blance < $topmemeber->right_blance) {
                                     //对碰金额 返给上级
-                                    $collision_amount = round($small_region_score * $ratio, 2);
+                                    $reward_income = $collision_amount = round($small_region_score * $ratio, 2);
                                     $collision_amount = PayOrderController::get_real_amount($topmemeber->id, $collision_amount);
                                     $notice = '左小右大';
                                     $mark_amount = '左-'.$topmemeber->left_blance.'| 右'.$topmemeber->right_blance;
@@ -178,7 +179,7 @@ class CollisionReward implements ShouldQueue
                                 //当前用户在左区，上级的左区为大区 左区的业绩余额大于右区的业绩余额 并且右区业绩大于0
                                 if ($topmemeber->left_blance > $topmemeber->right_blance && $topmemeber->right_blance > 0){
                                         $small_region_score = $topmemeber->right_blance;
-                                        $collision_amount = round($small_region_score * $ratio, 2);
+                                        $reward_income =  $collision_amount = round($small_region_score * $ratio, 2);
                                         $collision_amount = PayOrderController::get_real_amount($topmemeber->id, $collision_amount);
                                         $notice = '左大右小';
                                     $mark_amount = '左-'.$topmemeber->left_blance.'| 右'.$topmemeber->right_blance;
@@ -190,7 +191,7 @@ class CollisionReward implements ShouldQueue
                                 //右区的金额小于左区的金额(右区为小区) 产生对碰
                                 if ($topmemeber->right_blance < $topmemeber->left_blance) {
                                     //对碰金额 返给上级
-                                    $collision_amount = round($small_region_score * $ratio, 2);
+                                    $reward_income = $collision_amount = round($small_region_score * $ratio, 2);
                                     $collision_amount = PayOrderController::get_real_amount($topmemeber->id, $collision_amount);
                                     $notice = '左大右小';
                                     $mark_amount = '左-'.$topmemeber->left_blance.'| 右'.$topmemeber->right_blance;
@@ -198,7 +199,7 @@ class CollisionReward implements ShouldQueue
                                 //右区的业绩余额大于左区的业绩余额 并且左区业绩大于0
                                 if ($topmemeber->right_blance > $topmemeber->left_blance && $topmemeber->left_blance > 0) {
                                     $small_region_score = $topmemeber->left_blance;
-                                    $collision_amount = round($small_region_score * $ratio, 2);
+                                    $reward_income = $collision_amount = round($small_region_score * $ratio, 2);
                                     $collision_amount = PayOrderController::get_real_amount($topmemeber->id, $collision_amount);
                                     $notice = '左小右大';
                                     $mark_amount = '左-'.$topmemeber->left_blance.'| 右'.$topmemeber->right_blance;
@@ -208,7 +209,7 @@ class CollisionReward implements ShouldQueue
                             //左右大区业绩余额相等 且左右大区业绩余额都大于0
                             if ($topmemeber->right_blance > 0 && $topmemeber->left_blance > 0 && $topmemeber->right_blance == $topmemeber->left_blance){
                                 $small_region_score = $topmemeber->right_blance;
-                                $collision_amount = round($small_region_score * $ratio, 2);
+                                $reward_income = $collision_amount = round($small_region_score * $ratio, 2);
                                 $collision_amount = PayOrderController::get_real_amount($topmemeber->id, $collision_amount);
                                 $notice = '左右相等';
                                 $mark_amount = '左-'.$topmemeber->left_blance.'| 右'.$topmemeber->right_blance;
@@ -235,15 +236,18 @@ class CollisionReward implements ShouldQueue
                                 $level_amount = $small_region_score;
                             }
 
-
+                            $game_over_tip = '';
                             //碰撞金额大于0
                             if ($collision_amount > 0) {
+                                if($collision_amount < $reward_income){
+                                    $game_over_tip = '[出局]';
+                                }
                                 $topmemeber->increment('ktx_amount', $collision_amount);
                                 $log = [
                                     "userid" => $topmemeber->id,
                                     "username" => $topmemeber->username,
                                     "money" => $collision_amount,
-                                    "notice" => "下线(" . $this->member->username . ")购买(" . $product->title . ")对碰奖励",
+                                    "notice" => "下线(" . $this->member->username . ")购买(" . $product->title . ")对碰奖励".$game_over_tip,
                                     "type" => "对碰奖励",
                                     "status" => "+",
                                     "yuanamount" => $yuanmoney,
@@ -308,10 +312,13 @@ class CollisionReward implements ShouldQueue
                                 $rate = DB::table("memberlevel")->where(['level'=>$topmemeber->level])->value('rate');
                                 if($rate && $rate > 0 && $level_amount > 0){
                                     echo '会员星级奖励--'.$topmemeber->username.'等级--'.$topmemeber->level.'星--比例--'.$rate.'---本次小区业绩'.$level_amount."\n";
-                                    $vip_reward = round($level_amount * $rate /100, 2);
+                                    $base_reward = $vip_reward = round($level_amount * $rate /100, 2);
                                     $vip_reward = PayOrderController::get_real_amount($topmemeber->id, $vip_reward);
                                     echo '本次星级奖励应得--'.round($level_amount * $rate /100, 2).'实得--'.$vip_reward;
                                     if($vip_reward > 0 ){
+                                        if($vip_reward < $base_reward){
+                                            $game_over_tip = '[出局]';
+                                        }
                                         $before_money = $topmemeber->ktx_amount;
                                         $topmemeber->increment('ktx_amount', $vip_reward);
                                         //记录
@@ -319,7 +326,7 @@ class CollisionReward implements ShouldQueue
                                             "userid" => $topmemeber->id,
                                             "username" => $topmemeber->username,
                                             "money" => $vip_reward,
-                                            "notice" => "下线(" . $this->member->username . ")购买(" . $product->title . ")星级额外奖励",
+                                            "notice" => "下线(" . $this->member->username . ")购买(" . $product->title . ")星级额外奖励".$game_over_tip,
                                             "type" => "星级奖励",
                                             "status" => "+",
                                             "yuanamount" => $before_money,
