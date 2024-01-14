@@ -601,10 +601,25 @@ public function index(Request $request){
     }
 
 
+    function get_random_no($num)
+    {
+        $codeSeeds = "1234567890";
+        $len = strlen($codeSeeds);
+        $ban_num = ($num / 2) - 3;
+        $code = "";
+        for ($i = 0; $i < $num; $i++) {
+            $rand = rand(0, $len - 1);
+            if ($i == $ban_num) {
+                $code .= 'O';
+            } else {
+                $code .= $codeSeeds[$rand];
+            }
+        }
+        return $code;
+    }
+
+
     //冻结资金操作
-
-
-
     public function frozen(Request $request){
 
         view()->share("request",$request);
