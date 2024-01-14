@@ -289,7 +289,7 @@ class UserController extends Controller
     public function teamList(Request $request){
         $pageSize = $request->get('pageSize', 10);
         $page = $request->get('page', 1);
-        $list = Member::select('id', 'nickname', 'username', 'created_date','child_left_uid','child_right_uid','is_auth','realname')
+        $list = Member::select('id', 'nickname', 'username', 'created_date','child_left_uid','child_right_uid','is_auth','realname','region')
             ->where(['invite_uid'=>$this->Member->id])
             ->paginate($pageSize,'*','page',$page);
         foreach ($list as $v) {
