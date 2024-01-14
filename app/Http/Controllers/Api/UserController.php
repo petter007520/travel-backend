@@ -244,6 +244,80 @@ class UserController extends Controller
     }
 
     /**
+     * 我的团队
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function team(Request $request){
+        //直推总数
+        $total_invite_list = DB::table('member')->where(['invite_uid'=>$this->Member->id])->get(['id','total_recharge','total_withdraw']);
+        $data['team_child_count'] = $total_invite_list->count();
+        //左区人数
+        if($this->Member->child_left_uid > 0 ){
+            $child_left_count = DB::table('member')->whereRaw('FIND_IN_SET(?,tree_ids)',[$this->Member->child_left_uid])->count();
+            $data['left_count'] = $child_left_count+1;
+        }else{
+            $data['left_count'] = 0;
+        }
+        //右区人数
+        if($this->Member->child_right_uid > 0 ){
+            $child_right_count = DB::table('member')->whereRaw('FIND_IN_SET(?,tree_ids)',[$this->Member->child_right_uid])->count();
+            $data['right_count'] = $child_right_count+1;
+        }else{
+            $data['right_count'] = 0;
+        }
+        $data['total_recharge'] = 0;
+        $data['total_withdraw'] = 0;
+        foreach ($total_invite_list as $val){
+            if($val->total_recharge > 0 ){
+                $data['total_recharge'] += $val->total_recharge;
+            }
+            if($val->total_withdraw > 0 ){
+                $data['total_withdraw'] += $val->total_withdraw;
+            }
+        }
+        //直推收益
+        $data['total_income'] = DB::table('moneylog')->where(['moneylog_userid'=>$this->Member->id,'moneylog_type'=>'直推返佣'])->sum('moneylog_money');
+        return response()->json(['status' => 1, 'data' => $data]);
+    }
+
+    /**
+     * 直推成员列表
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function teamList(Request $request){
+        $pageSize = $request->get('pageSize', 10);
+        $page = $request->get('page', 1);
+        $list = Member::select('id', 'nickname', 'username', 'created_date','child_left_uid','child_right_uid','is_auth','realname')
+            ->where(['invite_uid'=>$this->Member->id])
+            ->paginate($pageSize,'*','page',$page);
+        foreach ($list as $v) {
+            $v->username = substr_replace($v->username, '****', 3, 4);
+            if($v->is_auth == 1){
+                $v->nickname = $v->realname;
+            }
+            //左区人数
+            if($v->child_left_uid > 0 ){
+                $child_left_count = DB::table('member')->whereRaw('FIND_IN_SET(?,tree_ids)',[$v->child_left_uid])->count();
+                $v->left_count = $child_left_count+1;
+            }else{
+                $v->left_count = 0;
+            }
+            //右区人数
+            if($v->child_right_uid > 0 ){
+                $child_right_count = DB::table('member')->whereRaw('FIND_IN_SET(?,tree_ids)',[$v->child_right_uid])->count();
+                $v->right_count = $child_right_count+1;
+            }else{
+                $v->right_count = 0;
+            }
+            unset($v->child_left_uid);
+            unset($v->child_right_uid);
+        }
+        return response()->json(['status' => 1, 'data' => $list]);
+    }
+
+    /**
      * 子账户开通
      * @param Request $request
      * @return array|\Illuminate\Http\JsonResponse

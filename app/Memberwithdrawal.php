@@ -264,6 +264,7 @@ class Memberwithdrawal extends Model
 
                     \App\Moneylog::AddLog($fee_log);
                 }
+                $Member->increment('total_withdraw',$Model->amount);//累计提现
 
                 DB::table('statistics')->where('user_id',$Member->id)->increment('team_total_withdrawal', $Model->amount);
                 DB::table('statistics_sys')->where('id',1)->increment('withdrawal_amount', $Model->amount);

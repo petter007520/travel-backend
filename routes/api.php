@@ -41,6 +41,8 @@ Route::middleware('cors')->group(function () {
     Route::any('/inquireOrder', 'Api\UserController@inquireOrder');//订单查询
     Route::any('/user/bug_log', 'Api\UserController@bug_log');//购买记录
     Route::any('/user/recharge_log', 'Api\UserController@recharge_log');//充值记录
+    Route::any('/user/team', 'Api\UserController@team');//我的团队
+    Route::any('/user/teamList', 'Api\UserController@teamList');//直推成员
 
     Route::any('/user/wealthList', 'Api\CommonController@wealthList');//用户新购信息
 

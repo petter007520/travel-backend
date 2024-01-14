@@ -70,11 +70,12 @@ class Memberrecharge extends Model
                 $money = 0;
                 $notice = '';
                 if($Model->recharge_type ==1){
-                    $amount=  $Member->ktx_amount;
+                    $amount=  $Member->amount;
                     $notice = '充值成功(CNY)';
                     $money = $Model->amount;
-                    $Member->increment('ktx_amount',$money);
-                    $houamount = $Member->ktx_amount;
+                    $Member->increment('amount',$money);
+                    $Member->increment('total_recharge',$Model->amount);//累计充值
+                    $houamount = $Member->amount;
                 }
                 if($Model->recharge_type == 2){
                     $notice = '充值成功(USDT)';
