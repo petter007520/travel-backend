@@ -185,7 +185,7 @@ class UserController extends Controller
        //新增直推
        $data['child_day_left'] = 0;
        $data['child_day_right'] = 0;
-       $child_day = DB::table('member')->where(['invite_uid'=>$this->Member->id])->get(['id','region']);
+       $child_day = DB::table('member')->where(['invite_uid'=>$this->Member->id,'created_date'=>$date])->get(['id','region']);
         foreach ($child_day as $val){
             if($val->region == 1){
                 $data['child_day_left'] += 1;
