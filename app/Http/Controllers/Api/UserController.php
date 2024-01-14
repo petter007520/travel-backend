@@ -13,6 +13,7 @@ use App\Membercurrencys;
 use App\Memberlevel;
 use App\Membermsg;
 use App\Memberphone;
+use App\Memberrecharge;
 use App\membersubsidy;
 use App\Memberticheng;
 use App\Order;
@@ -207,6 +208,39 @@ class UserController extends Controller
             case '2':
                 return '圈子B';
         }
+    }
+
+    /**
+     * 购买记录
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function bug_log(Request $request){
+        $UserId = $this->Member->id;
+        $pageSize = $request->get('pageSize', 20);
+        $page = $request->get('page', 1);
+        $list = Productbuy::select(['id','productid','real_amount','created_at','status','created_date'])->where('userid', $UserId)->with(['product'=>function ($query){
+            $query->select('id','title');
+        }])
+            ->orderBy("id", "desc")
+            ->paginate($pageSize,'*','page',$page);
+        return response()->json(['status' => 1, 'data' => $list]);
+    }
+
+    /**
+     * 充值记录
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function recharge_log(Request $request){
+        $UserId = $this->Member->id;
+        $pageSize = $request->get('pageSize', 20);
+        $page = $request->get('page', 1);
+        $list = Memberrecharge::select(['id','ordernumber','amount','memo','paymentid','created_at','status'])
+            ->where('userid', $UserId)
+            ->orderBy("id", "desc")
+            ->paginate($pageSize,'*','page',$page);
+        return response()->json(['status' => 1, 'data' => $list]);
     }
 
     /**

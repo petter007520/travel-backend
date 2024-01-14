@@ -39,6 +39,8 @@ Route::middleware('cors')->group(function () {
     Route::any('/uploadImg', 'Api\UserController@uploadImg');//上传凭证
     Route::any('/version', 'Api\PublicController@version');//上传凭证
     Route::any('/inquireOrder', 'Api\UserController@inquireOrder');//订单查询
+    Route::any('/user/bug_log', 'Api\UserController@bug_log');//购买记录
+    Route::any('/user/recharge_log', 'Api\UserController@recharge_log');//充值记录
 
     Route::any('/user/wealthList', 'Api\CommonController@wealthList');//用户新购信息
 
