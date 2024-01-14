@@ -217,7 +217,7 @@ class UserController extends Controller
      */
     public function bug_log(Request $request){
         $UserId = $this->Member->id;
-        $pageSize = $request->get('pageSize', 20);
+        $pageSize = $request->get('pageSize', 10);
         $page = $request->get('page', 1);
         $list = Productbuy::select(['id','productid','real_amount','created_at','status','created_date'])->where('userid', $UserId)->with(['product'=>function ($query){
             $query->select('id','title');
@@ -234,7 +234,7 @@ class UserController extends Controller
      */
     public function recharge_log(Request $request){
         $UserId = $this->Member->id;
-        $pageSize = $request->get('pageSize', 20);
+        $pageSize = $request->get('pageSize', 10);
         $page = $request->get('page', 1);
         $list = Memberrecharge::select(['id','ordernumber','amount','memo','paymentid','created_at','status'])
             ->where('userid', $UserId)
