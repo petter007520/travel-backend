@@ -26,7 +26,9 @@ class Productbuy extends Model
         'sendday_count',
         'level'
     ];
-
+    public function product(){
+        return $this->belongsTo(Product::class,'productid','id');
+    }
     //查询返佣比例
     protected function checkBayong($id){
 
