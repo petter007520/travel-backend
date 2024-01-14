@@ -41,7 +41,7 @@ class Memberrecharge extends Model
       $Rec->userid=$Data['userid'];
       $Rec->username= $Data['username'] ?? DB::table("member")->where("id", $Data['userid'])->value("username");
       $Rec->amount=$Data['amount'];
-      $Rec->usdt_amount=$Data['usdt_amount'];
+      $Rec->usdt_amount=$Data['usdt_amount'] ?? 0;
       $Rec->ip=$Data['ip'];
       $Rec->type=$Data['type'];
       $Rec->recharge_type=$Data['recharge_type'] ?? 1;
