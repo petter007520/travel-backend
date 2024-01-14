@@ -182,6 +182,18 @@ class UserController extends Controller
                $data['income_day_right'] += $val->amount;
            }
        }
+       //新增直推
+       $data['child_day_left'] = 0;
+       $data['child_day_right'] = 0;
+       $child_day = DB::table('member')->where(['invite_uid'=>$this->Member->id])->get(['id','region']);
+        foreach ($child_day as $val){
+            if($val->region == 1){
+                $data['child_day_left'] += 1;
+            }
+            if($val->region == 2){
+                $data['child_day_right'] += 1;
+            }
+        }
 //        $data['income_all'] = DB::table('moneylog')->where(['moneylog_userid'=>$this->Member->id])
 //            ->whereIn('moneylog_type',['直推返佣','对碰奖励','星级奖励','股东奖励','静态收益'])->sum('moneylog_money');
         return response()->json(['status' => 1, 'data' => $data]);
