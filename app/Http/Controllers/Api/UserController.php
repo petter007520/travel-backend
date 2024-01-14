@@ -3068,9 +3068,9 @@ class UserController extends Controller
             $data['status'] = 1;
             $data['created_at'] = Carbon::now();
 
-            if (strlen(trim($name)) < 1 || strlen(trim($name)) >= 10) {
-                return response()->json(["status" => 0, "msg" => "姓名长度错误"]);
-            }
+//            if (strlen(trim($name)) < 1 || strlen(trim($name)) >= 10) {
+//                return response()->json(["status" => 0, "msg" => "姓名长度错误"]);
+//            }
             $data['realname'] = urldecode($name);
 
             if (strlen(trim($id_card)) < 5 || strlen(trim($id_card)) >= 20) {
