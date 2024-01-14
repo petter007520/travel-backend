@@ -346,7 +346,7 @@ class PublicController
                     $invicode = $this->get_random_code(7);
                 }
                 $RegMember->invicode = $invicode;
-                $RegMember->ktx_amount = 100000;
+                $RegMember->amount = 100000;
                 $RegMember->lastsession = \App\Member::EncryptPassWord(Carbon::now() . $RegMember->id);
                 $RegMember->family_ids = $invite_user->family_ids.','.$invite_user->id;
                 $RegMember->save();
