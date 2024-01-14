@@ -78,7 +78,8 @@
                     <th>账号</th>
                     <th>姓名</th>
                     <th>手机</th>
-                    <th>余额</th>
+                    <th>充值余额</th>
+                    <th>收益余额</th>
                     <th>USDT余额</th>
                     <th>冻结金额</th>
                     <th>会员等级</th>
@@ -111,6 +112,7 @@
                 <td class="title_<% item.id %>"><% item.username %></td>
                 <td><% item.realname?item.realname:'' %></td>
                 <td><% item.Showmobile?item.Showmobile:'' %></td>
+                <td><% item.amount?item.amount:'0' %></td>
                 <td><% item.ktx_amount?item.ktx_amount:'0' %></td>
                 <td><% item.usdt_amount?item.usdt_amount:'0' %></td>
                 <td><% item.integral?item.is_dongjie:'0' %></td>
