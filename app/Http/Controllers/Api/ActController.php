@@ -446,7 +446,9 @@ class ActController extends Controller
 	}
 
 	//我的中奖列表
-	public function MyLottoryLog() {
+	public function MyLottoryLog(Request $request) {
+        $pageSize = $request->get('pageSize', 10);
+        $page = $request->get('page', 1);
 		$lottory_logs = DB::table('act_rewards_log')
 			->join('member', 'member.id', '=', 'act_rewards_log.user_id')
 			->where(['act_rewards_log.pre' => 0])
@@ -455,7 +457,7 @@ class ActController extends Controller
 			->select('member.username', 'act_rewards_log.id', 'act_rewards_log.reward_id', 'act_rewards_log.reward_name', 'act_rewards_log.reward_time', 'act_rewards_log.virtual', 'act_rewards_log.address', 'act_rewards_log.realname', 'act_rewards_log.mobile')
 			->limit(50)
 			->orderBy('act_rewards_log.id', 'desc')
-			->get();
+            ->paginate($pageSize,'*','page',$page);
 		foreach($lottory_logs as $k => $v) {
 			$v->username = substr_replace($v->username, '****', 3, 4);
 			$v->reward_time = date('Y-m-d H:i:s', $v->reward_time);
