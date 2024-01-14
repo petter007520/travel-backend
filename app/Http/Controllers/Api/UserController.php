@@ -1177,7 +1177,8 @@ class UserController extends Controller
     public function myDetail(Request $request)
     {
         $UserId = $this->Member->id;
-        $pageSize = $request->get('pageSize', 99);
+        $pageSize = $request->get('pageSize', 10);
+        $page = $request->get('page', 1);
         $type = $request->post('type','');
         $time = $request->post('time','day');
         switch ($time) {
@@ -1210,7 +1211,7 @@ class UserController extends Controller
             })
             ->whereBetween('created_at',$time)
             ->orderBy("id", "desc")
-            ->paginate($pageSize);
+            ->paginate($pageSize,'*','page',$page);
         //先查6~12月的统计数据
         foreach ($data as $v) {
             switch ($v->moneylog_type) {
