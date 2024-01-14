@@ -201,11 +201,11 @@ class UserController extends Controller
     private function getRegionText($region){
         switch ($region) {
             case '0':
-                return '未分区';
+                return '未入圈';
             case '1':
-                return '左区';
+                return '圈子A';
             case '2':
-                return '右区';
+                return '圈子B';
         }
     }
 
