@@ -45,15 +45,24 @@
 
             </div>
         </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label col-sm-1">充值账户</label>
+            <div class="layui-input-inline">
+                <select name="recharge_account" lay-verify="required" lay-search>
+                    <option value="amount" >充值账户(充值账户)</option>
+                    <option value="ktx_amount" >收益账户(收益，提现账户）</option>
+                </select>
+            </div>
+        </div>
 
         <div class="layui-form-item">
 
             <label class="layui-form-label col-sm-1">会员帐号</label>
             <div class="layui-input-inline">
                 <select name="userid" lay-verify="required" lay-search>
-                    
+
                         <option value="{{$edit_money->id}}">{{$edit_money->username}}</option>
-                        
+
                 </select>
 
             </div>

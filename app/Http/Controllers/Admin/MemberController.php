@@ -471,16 +471,10 @@ public function index(Request $request){
     //资金操作
 
     public function moneys(Request $request){
-
-        // view()->share("request",$request);
         if($request->isMethod("post")){
-
-
-
+            $filed = $request->post('recharge_account','');
             if($request->moneytype=='+') {
-
                 $amount = intval($request->amount);
-
                 if ($amount < 1) {
                     return response()->json([
                         "msg" => "充值金额错误", "status" => 1
@@ -504,26 +498,27 @@ public function index(Request $request){
                     ]);
                 }
 
+                if (empty($filed)|| !in_array($filed,['amount','ktx_amount'])) {
+                    return response()->json(["msg" => "充值账户错误", "status" => 1]);
+                }
+
                 $memo = $request->memo != '' ? $request->memo : $this->payment[$request->paymentid] . '充值' . $request->amount;
-
-
                 $data = \App\Memberrecharge::Recharge([
                     "userid" => $request->userid, //会员ID
                     "amount" => $request->amount,//金额
                     "memo" => $memo,//备注
+                    "ordernumber"=> 'RE'.date("YmdHis").$this->get_random_no(7),
                     "status" => 1,//备注
                     "paytime" => Carbon::now(),//充值时间
                     "paymentid" => $request->paymentid,//充值方式 1支付宝,2微信,3银行卡
                     "ip" => $request->getClientIp(),//IP
                     "type" => $request->type,//类型 Cache(RechargeType):系统充值|优惠活动|优惠充值|后台充值|用户充值
-
                 ]);
 
 
                 $Member = Member::find($request->userid);
-                $amount = $Member->ktx_amount;
-                $Member->increment('ktx_amount', $request->amount);
-                // $Member->activation=1;
+                $amount = $Member->$filed;
+                $Member->increment($filed, $request->amount);
                 $Member->save();
                 $msg = [
                     "userid" => $Member->id,
@@ -544,7 +539,7 @@ public function index(Request $request){
                     "type" => "充值",
                     "status" => "+",
                     "yuanamount" => $amount,
-                    "houamount" => $Member->ktx_amount,
+                    "houamount" => $Member->$filed,
                     "ip" => \Request::getClientIp(),
                     "recharge_id"=>$data['data']->id,
                 ];
@@ -559,13 +554,10 @@ public function index(Request $request){
                 }
 
             }else if($request->moneytype=='-'){
-
                 $memo = $request->memo != '' ? $request->memo : $this->payment[$request->paymentid] . '扣款' . $request->amount;
-
                 $Member = Member::find($request->userid);
-                $amount = $Member->ktx_amount;
-                $Member->decrement('ktx_amount', $request->amount);
-
+                $amount = $Member->$filed;
+                $Member->decrement($filed, $request->amount);
                 $msg = [
                     "userid" => $Member->id,
                     "username" => $Member->username,
@@ -585,58 +577,27 @@ public function index(Request $request){
                     "type" => "扣款",
                     "status" => "-",
                     "yuanamount" => $amount,
-                    "houamount" => $Member->ktx_amount,
+                    "houamount" => $Member->$filed,
                     "ip" => \Request::getClientIp(),
-                    // "recharge_id"=>$data['data']->id,
                 ];
 
                 \App\Moneylog::AddLog($log);
-
-
                 if ($request->ajax()) {
                     return response()->json([
                         "msg" => "扣款成功", "status" => 0
                     ]);
                 }
-
-
             }
-
-
-
         }else{
-
-// $parm = $request->toArray();
-            // if(Cache::has("admin.payment")){
-            //     $this->payment =Cache::get("admin.payment");
-            // }else {
                 $payments = DB::table("payment")->get();
-
                 $payment = [];
                 foreach ($payments as $pay) {
                     $payment[$pay->id] = $pay->pay_name;
                 }
-
-
-
-
-
                 $this->payment =$payment;
-                // Cache::put("admin.payment",$payment,Cache::get("cachetime"));
-            // }
-
-            // view()->share("payment",$this->payment);
-
-            // $member= DB::table("member")->where("state",1)->get();
-            // $member= DB::table("member")->where(['state'=>1,'id'=>$parm['id']])->first();
-
-            // return $this->ShowTemplate(["member"=>$member]);
-             $Member = Member::where("id",$request->get('id'))->first();
-
+                $Member = Member::where("id",$request->get('id'))->first();
             return $this->ShowTemplate(["edit_money"=>$Member]);
         }
-
-
     }
 
 
