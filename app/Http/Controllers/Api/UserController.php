@@ -428,7 +428,7 @@ class UserController extends Controller
             $download_link = DB::table("setings")->where(['keyname'=>'HotAppDownloadUrl'])->value('value');
             Cache::get('download_link', $download_link);
         }
-        $data['download_link'] = $invite_link;
+        $data['download_link'] = $download_link;
         return response()->json(['status' => 1,'msg'=>'ok','data' => $data]);
     }
 
