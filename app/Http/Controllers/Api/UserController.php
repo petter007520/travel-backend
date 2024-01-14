@@ -126,6 +126,7 @@ class UserController extends Controller
         $data['right_achievement'] = $this->Member->right_amount_show;//右区业绩
         $data['level'] = $this->Member->level;//右区业绩
         $data['type'] = $this->Member->type;//账号类型
+        $data['region'] = $this->getRegionText($this->Member->region);//区域
         $data['today_income'] = DB::table('member_money_log')->where(['user_id'=>$this->Member->id,'type'=>1,'date'=>date('Y-m-d',time())])->sum('amount');
         $main = [];
         $left = [];
@@ -184,6 +185,16 @@ class UserController extends Controller
 //        $data['income_all'] = DB::table('moneylog')->where(['moneylog_userid'=>$this->Member->id])
 //            ->whereIn('moneylog_type',['直推返佣','对碰奖励','星级奖励','股东奖励','静态收益'])->sum('moneylog_money');
         return response()->json(['status' => 1, 'data' => $data]);
+    }
+    private function getRegionText($region){
+        switch ($region) {
+            case '0':
+                return '未分区';
+            case '1':
+                return '左区';
+            case '2':
+                return '右区';
+        }
     }
 
     /**
