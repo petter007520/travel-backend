@@ -150,7 +150,7 @@
                 </td>
                 <td><% item.state?'正常':'禁用' %></td>
                 <td id='<% item.id %>' onclick='sign_log(<% item.id %>,["2022-05-1","2022-05-2","2022-05-4"])'><% item.logintime?item.logintime:'-' %></td>
-                <td class="td-manage" style="width:200px;">
+                <td class="td-manage">
                     <a title="查看详情"  onclick="userdetail('<% item.inviter %>','<% item.inviterName %>','<% item.tuiguangrens %>','<% item.recharges %>','<% item.withdrawals %>','<% item.moneys %>','<% item.child_active %>')" href="javascript:;">
                         <i class="layui-icon" style="color:red;">&#xe702;</i>
                     </a>
