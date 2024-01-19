@@ -94,7 +94,6 @@ public function index(Request $request){
                         $s_key_invicode[]=[$this->table.".invicode","like","%".$_REQUEST['s_key']."%"];
                         $s_key_realname[]=[$this->table.".realname","like","%".$_REQUEST['s_key']."%"];
                     }
-
                     $query->orwhere($s_key_invicode)
                         ->orwhere($s_key_realname)
                         ->orwhere($s_key_username);
@@ -140,42 +139,29 @@ public function index(Request $request){
                 ->paginate($pagesize);
 
             if($list){
-
                 foreach ($list as $item){
-
                     $item->tuiguangren=DB::table("member")->where("inviter",$item->invicode)->pluck("id");
-                   // $item->tuiguangren=\App\Member::treeuid($item->invicode); ;
-
                     $item->tuiguangrens=count($item->tuiguangren);
+                    $item->child_active=DB::table("member")->where(["inviter"=>$item->invicode,'is_active'=>1])->count();
                     $item->withdrawals=DB::table("memberwithdrawal")->where("status","1")->whereIn("userid",$item->tuiguangren)->sum("amount");
-                    $item->recharges=DB::table("memberrecharge")->where("status","1")->whereIn("userid",$item->tuiguangren)->where("type","<>","优惠活动")->sum("amount");
-
+                    $item->recharges=DB::table("memberrecharge")->where("status","1")->whereIn("userid",$item->tuiguangren)->sum("amount");
                     $item->moneys=$item->recharges-$item->withdrawals;
-
                     $item->withdrawals=sprintf("%.2f",$item->withdrawals);
                     $item->recharges=sprintf("%.2f",$item->recharges);
                     $item->moneys=sprintf("%.2f",$item->moneys);
-
-                    $item->levelName=isset($this->memberlevelName[$item->level])?$this->memberlevelName[$item->level]:'';
-                    $item->levelgroupName=isset($this->membergrouplevelName[$item->glevel])?$this->membergrouplevelName[$item->glevel]:'';
+                    $item->levelName=isset($this->memberlevelName[$item->level])?$this->memberlevelName[$item->level]:'普通会员';
+//                    $item->levelgroupName=isset($this->membergrouplevelName[$item->glevel])?$this->membergrouplevelName[$item->glevel]:'';
                     $item->inviterName=$item->inviter!=''?DB::table($this->table)->where("invicode",$item->inviter)->value("username"):'';
                     // $item->Showpassword=\App\Member::DecryptPassWord($item->password);
                     // $item->Showpaypwd=\App\Member::DecryptPassWord($item->paypwd);
                     $item->Showmobile=\App\Member::DecryptPassWord($item->mobile);
-
-                    $item->tuiguangs=DB::table("member")->where("inviter",$item->invicode)->count();
-
                 }
 
                 return ["status"=>0,"list"=>$list,"pagesize"=>$pagesize];
             }
         }else{
-
-
-
             return $this->ShowTemplate();
         }
-
     }
 
     public function store(Request $request){

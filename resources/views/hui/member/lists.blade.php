@@ -78,13 +78,21 @@
                     <th>账号</th>
                     <th>姓名</th>
                     <th>手机</th>
+                    <th>圈子A业绩</th>
+                    <th>圈子A业绩余额</th>
+                    <th>圈子B业绩</th>
+                    <th>圈子B业绩余额</th>
+                    <th>剩余出局额度</th>
                     <th>充值余额</th>
                     <th>收益余额</th>
                     <th>USDT余额</th>
                     <th>冻结金额</th>
                     <th>会员等级</th>
                     <th>上级</th>
-                    <th>状态</th>
+                    <th>圈子</th>
+                    <th>实名状态</th>
+                    <th>激活状态</th>
+                    <th>账号状态</th>
                     <th>最后登录时间</th>
                     <th>操作</th>
                 </tr>
@@ -112,16 +120,38 @@
                 <td class="title_<% item.id %>"><% item.username %></td>
                 <td><% item.realname?item.realname:'' %></td>
                 <td><% item.Showmobile?item.Showmobile:'' %></td>
+                <td><% item.left_amount %></td>
+                <td><% item.left_blance %></td>
+                <td><% item.right_amount %></td>
+                <td><% item.right_blance %></td>
+                <td><% item.collision_amount - item.collision_amount_finsh %></td>
                 <td><% item.amount?item.amount:'0' %></td>
                 <td><% item.ktx_amount?item.ktx_amount:'0' %></td>
                 <td><% item.usdt_amount?item.usdt_amount:'0' %></td>
                 <td><% item.integral?item.is_dongjie:'0' %></td>
                 <td><% item.levelName %></td>
                 <td><% item.inviter?item.inviter:'0' %>（<% item.inviterName?item.inviterName:'0' %>）</td>
+                <td>
+                    <%# if(item.region==1){ %>
+                    <em style="color: red">圈子A</em>
+                    <%# }else if(item.region==2){ %>
+                    <em style="color: #0e90d2">圈子B</em>
+                    <%# }%>
+                </td>
+                <td><% item.is_auth?'已实名':'未实名/审核中' %></td>
+                <td>
+                    <%# if(item.status==0){ %>
+                    <em style="color: grey">未激活</em>
+                    <%# }else if(item.status==1){ %>
+                    <em style="color: #0e90d2">已激活</em>
+                    <%# }else if(item.status==2){ %>
+                    <em style="color: red">已出局</em>
+                    <%# }%>
+                </td>
                 <td><% item.state?'正常':'禁用' %></td>
                 <td id='<% item.id %>' onclick='sign_log(<% item.id %>,["2022-05-1","2022-05-2","2022-05-4"])'><% item.logintime?item.logintime:'-' %></td>
                 <td class="td-manage" style="width:200px;">
-                    <a title="查看详情"  onclick="userdetail('<% item.inviter %>','<% item.inviterName %>','<% item.tuiguangrens %>','<% item.recharges %>','<% item.withdrawals %>','<% item.moneys %>','<% item.allxf_fee %>')" href="javascript:;">
+                    <a title="查看详情"  onclick="userdetail('<% item.inviter %>','<% item.inviterName %>','<% item.tuiguangrens %>','<% item.recharges %>','<% item.withdrawals %>','<% item.moneys %>','<% item.child_active %>')" href="javascript:;">
                         <i class="layui-icon" style="color:red;">&#xe702;</i>
                     </a>
                     <a title="编辑"  onclick="update(<% item.id %>,<% d.current_page %>)" href="javascript:;">
@@ -133,19 +163,16 @@
                     <a title="冻结解冻"  onclick="frozen(<% item.id %>,<% d.current_page %>)" href="javascript:;">
                         <i class="layui-icon" style="color: red;">&#xe6b1;</i>
                     </a>
-
                     <a onclick="member_stop(this,<% item.id %>,<% d.current_page %>)" href="javascript:;"  title="<% item.state==0?'启用':'禁用' %>">
-
                             <%# if(item.state==1){ %>
                         <i class="layui-icon" style="color:green;">&#xe62f;</i>
                             <%# }else{%>
                         <i class="layui-icon" style="color:red;">&#xe601;</i>
                             <%# } %>
-
                     </a>
-                    <a title="删除" onclick="del(<% item.id %>,<% d.current_page %>)" href="javascript:;">
-                        <i class="layui-icon">&#xe640;</i>
-                    </a>
+{{--                    <a title="删除" onclick="del(<% item.id %>,<% d.current_page %>)" href="javascript:;">--}}
+{{--                        <i class="layui-icon">&#xe640;</i>--}}
+{{--                    </a>--}}
                 </td>
             </tr>
             <%#  }); %>
@@ -156,18 +183,16 @@
     </script>
 
     <script>
-        function userdetail(inviter,inviterName,tuiguangrens,recharges,withdrawals,moneys,allxf_fee){
+        function userdetail(inviter,inviterName,tuiguangrens,recharges,withdrawals,moneys,child_active){
             var msg='推荐人ID:'+ inviter + '<br/>' +
-                    '推荐人账号:'+ inviterName +'<br/>' +
-                    '推广人数:'+ tuiguangrens +'<br/>' +
-                    '充值总额:'+ recharges +'<br/>' +
-                    '提现总额:'+ withdrawals +'<br/>' +
-                    '收益总额:'+ moneys+'<br/>' +
-                    '团队总业绩:'+ allxf_fee +'<br/>' ;
-
+                '推荐人账号:'+ inviterName +'<br/>' +
+                '推广人数:'+ tuiguangrens +'<br/>' +
+                '充值总额:'+ recharges +'<br/>' +
+                '提现总额:'+ withdrawals +'<br/>' +
+                '直推激活:'+ child_active+'<br/>' +
+                '平台收益总额:'+ moneys+'<br/>' ;
             layer.alert(msg,{title:'用户详情'});
         }
-
 
     layui.use(['form','laydate'], function(){
         var form = layui.form;
