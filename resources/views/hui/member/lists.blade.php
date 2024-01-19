@@ -133,9 +133,9 @@
                 <td><% item.inviter?item.inviter:'0' %>（<% item.inviterName?item.inviterName:'0' %>）</td>
                 <td>
                     <%# if(item.region==1){ %>
-                    <span style="color: red">圈子A</span>
+                    <span style="color: red">A圈</span>
                     <%# }else if(item.region==2){ %>
-                    <span style="color: #0e90d2">圈子B</span>
+                    <span style="color: #0e90d2">B圈</span>
                     <%# }%>
                 </td>
                 <td><% item.is_auth?'已实名':'未实名/审核中' %></td>
