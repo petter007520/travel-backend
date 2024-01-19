@@ -11,6 +11,7 @@ use App\Models\Bank;
 use App\Models\BankCardStatement;
 use App\Models\BankCardStatementExport;
 use App\RewardLog;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -29,7 +30,9 @@ class CollisionReward implements ShouldQueue
 
     public $member = [];
     public $productInfo = [];
+
     public $amount = 0;
+    private $job_id = '';
 
 
     /**
@@ -37,11 +40,12 @@ class CollisionReward implements ShouldQueue
      *
      * @return void
      */
-    public function __construct($member, $integrals, $product)
+    public function __construct($member, $integrals, $product, $job_id)
     {
         $this->member = $member;
         $this->amount = $integrals;
         $this->productInfo = $product;
+        $this->job_id = $job_id;
         $this->onQueue('collisionReward');
     }
 
@@ -60,10 +64,16 @@ class CollisionReward implements ShouldQueue
         $region = $this->member->region;  //用户区域
         $level_amount = 0; // 星级奖励金额(新增业绩)
         $today = date('Y-m-d',time());
-
-        $area = '左区';
+        //检查是否有异常数据
+        $check = DB::table('collision_reward_job_data')->where(['status'=>1])->first();
+        if($check){
+            echo '任务编号：'.$check->job_no.'数据处理未完成，出现异常，请检查';
+        }
+        //标记本次任务开始处理
+        DB::table('collision_reward_job_data')->where(['id'=>$this->job_id,'status'=>0])->update(['status'=>1]);
+        $area = 'A圈';
         if ($region == 2) {
-            $area = '右区';
+            $area = 'B圈';
         }
 
         Log::channel('collision_reward')->info(now() . $area . $this->member->username . '购买' . $product->title . '对碰奖励开始');
@@ -82,7 +92,7 @@ class CollisionReward implements ShouldQueue
                 //存在上级 且为激活状态
                 if ($topmemeber) {
                     $field = $region == 1 ? 'left': 'right';
-                    $region_text = $region == 1 ? '左区': '右区';
+                    $region_text = $region == 1 ? 'A圈': 'B圈';
                     //对应区域展示总业绩增加
                     $before_show_amount = $topmemeber->$field.'_amount_show';
                     $topmemeber->increment($field.'_amount_show', $integrals);
@@ -172,8 +182,8 @@ class CollisionReward implements ShouldQueue
                                     //对碰金额 返给上级
                                     $reward_income = $collision_amount = round($small_region_score * $ratio, 2);
                                     $collision_amount = PayOrderController::get_real_amount($topmemeber->id, $collision_amount);
-                                    $notice = '左小右大';
-                                    $mark_amount = '左-'.$topmemeber->left_blance.'| 右'.$topmemeber->right_blance;
+                                    $notice = 'A小-B大';
+                                    $mark_amount = 'A-'.$topmemeber->left_blance.'| -B'.$topmemeber->right_blance;
                                 }
 
                                 //当前用户在左区，上级的左区为大区 左区的业绩余额大于右区的业绩余额 并且右区业绩大于0
@@ -181,8 +191,8 @@ class CollisionReward implements ShouldQueue
                                         $small_region_score = $topmemeber->right_blance;
                                         $reward_income =  $collision_amount = round($small_region_score * $ratio, 2);
                                         $collision_amount = PayOrderController::get_real_amount($topmemeber->id, $collision_amount);
-                                        $notice = '左大右小';
-                                    $mark_amount = '左-'.$topmemeber->left_blance.'| 右'.$topmemeber->right_blance;
+                                        $notice = 'A大-B小';
+                                    $mark_amount = 'A-'.$topmemeber->left_blance.'| B-'.$topmemeber->right_blance;
                                 }
                             }
 
@@ -193,16 +203,16 @@ class CollisionReward implements ShouldQueue
                                     //对碰金额 返给上级
                                     $reward_income = $collision_amount = round($small_region_score * $ratio, 2);
                                     $collision_amount = PayOrderController::get_real_amount($topmemeber->id, $collision_amount);
-                                    $notice = '左大右小';
-                                    $mark_amount = '左-'.$topmemeber->left_blance.'| 右'.$topmemeber->right_blance;
+                                    $notice = 'A大-B小';
+                                    $mark_amount = 'A-'.$topmemeber->left_blance.'| B-'.$topmemeber->right_blance;
                                 }
                                 //右区的业绩余额大于左区的业绩余额 并且左区业绩大于0
                                 if ($topmemeber->right_blance > $topmemeber->left_blance && $topmemeber->left_blance > 0) {
                                     $small_region_score = $topmemeber->left_blance;
                                     $reward_income = $collision_amount = round($small_region_score * $ratio, 2);
                                     $collision_amount = PayOrderController::get_real_amount($topmemeber->id, $collision_amount);
-                                    $notice = '左小右大';
-                                    $mark_amount = '左-'.$topmemeber->left_blance.'| 右'.$topmemeber->right_blance;
+                                    $notice = 'A小-B大';
+                                    $mark_amount = 'A-'.$topmemeber->left_blance.'| B'.$topmemeber->right_blance;
                                 }
                             }
 
@@ -211,8 +221,8 @@ class CollisionReward implements ShouldQueue
                                 $small_region_score = $topmemeber->right_blance;
                                 $reward_income = $collision_amount = round($small_region_score * $ratio, 2);
                                 $collision_amount = PayOrderController::get_real_amount($topmemeber->id, $collision_amount);
-                                $notice = '左右相等';
-                                $mark_amount = '左-'.$topmemeber->left_blance.'| 右'.$topmemeber->right_blance;
+                                $notice = 'AB相等';
+                                $mark_amount = 'A-'.$topmemeber->left_blance.'| B-'.$topmemeber->right_blance;
                             }
 
                             $top_user_small_region = 0;
@@ -262,10 +272,10 @@ class CollisionReward implements ShouldQueue
                                 $log = [
                                     "user_id" => $topmemeber->id,
                                     "username" => $topmemeber->username,
-                                    "title" => "对碰(".$notice.")-左区业绩扣除",
+                                    "title" => "对碰(".$notice.")-A圈业绩扣除",
                                     "from"  => 'left',
                                     "type" => 2,
-                                    "type_title" => "左区业绩变动",
+                                    "type_title" => "A圈业绩变动",
                                     "amount" => $small_region_score,
                                     "before_amount" => $before_left_balance,
                                     "after_amount" => $topmemeber->left_blance,
@@ -416,6 +426,7 @@ class CollisionReward implements ShouldQueue
         }catch (\Exception $e){
             Log::channel('collision_fail')->alert($e->getMessage());
         }
+        DB::table('collision_reward_job_data')->where(['id'=>$this->job_id,'status'=>1])->update(['status'=>2,'finish_at'=>Carbon::now()]);
         Log::channel('collision_reward')->info(now() . $area . $this->member->username . '购买' . $product->title . '对碰奖励结束');
     }
 

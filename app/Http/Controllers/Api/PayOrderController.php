@@ -175,8 +175,16 @@ class PayOrderController extends Controller
 
             //购买累计进入总金额
             $Nowmember = Member::find($Member->id);
+            //记录任务数据
+            $job_data = [
+                'job_no'=>'worker'.date('YmdHis').$this->get_random_code(6),
+                'data' => json_encode(['member'=>$Nowmember,'amount'=>$pro_buy_data->real_amount,'product'=>$product]),
+                'status'=>0,
+                'created_at'=>Carbon::now()
+            ];
+            $job_id = DB::table('collision_reward_job_data')->insertGetId($job_data);
             // 异步处理双区对碰奖励
-            dispatch(new CollisionReward($Nowmember, $pro_buy_data->real_amount, $product))->onQueue('collisionReward');
+            dispatch(new CollisionReward($Nowmember, $pro_buy_data->real_amount, $product,$job_id))->onQueue('collisionReward');
             //原订单结束
             if($pro_buy_data->type == 2 && $pro_buy_data->before_order_id > 0){
                 DB::table('productbuy')->where(['id'=>$pro_buy_data->before_order_id])->update(['status'=>0,'reason'=>'财富等级升级，本订单关闭，新订单ID-'.$order_id]);
