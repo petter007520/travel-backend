@@ -290,10 +290,10 @@ class CollisionReward implements ShouldQueue
                                 $log = [
                                     "user_id" => $topmemeber->id,
                                     "username" => $topmemeber->username,
-                                    "title" => "对碰(".$notice.")-右区业绩扣除",
+                                    "title" => "对碰(".$notice.")-B圈业绩扣除",
                                     "from"  => 'right',
                                     "type" => 2,
-                                    "type_title" => "右区业绩变动",
+                                    "type_title" => "B圈业绩变动",
                                     "amount" => $small_region_score,
                                     "before_amount" => $before_right_balance,
                                     "after_amount" => $topmemeber->right_blance,
