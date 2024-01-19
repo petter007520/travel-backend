@@ -142,7 +142,7 @@ public function index(Request $request){
                 foreach ($list as $item){
                     $item->tuiguangren=DB::table("member")->where("inviter",$item->invicode)->pluck("id");
                     $item->tuiguangrens=count($item->tuiguangren);
-                    $item->child_active=DB::table("member")->where(["inviter"=>$item->invicode,'is_active'=>1])->count();
+                    $item->child_active=DB::table("member")->where(["inviter"=>$item->invicode,'status'=>1])->count();
                     $item->withdrawals=DB::table("memberwithdrawal")->where("status","1")->whereIn("userid",$item->tuiguangren)->sum("amount");
                     $item->recharges=DB::table("memberrecharge")->where("status","1")->whereIn("userid",$item->tuiguangren)->sum("amount");
                     $item->moneys=$item->recharges-$item->withdrawals;
