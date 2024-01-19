@@ -133,19 +133,19 @@
                 <td><% item.inviter?item.inviter:'0' %>（<% item.inviterName?item.inviterName:'0' %>）</td>
                 <td>
                     <%# if(item.region==1){ %>
-                    <em style="color: red">圈子A</em>
+                    <span style="color: red">圈子A</span>
                     <%# }else if(item.region==2){ %>
-                    <em style="color: #0e90d2">圈子B</em>
+                    <span style="color: #0e90d2">圈子B</span>
                     <%# }%>
                 </td>
                 <td><% item.is_auth?'已实名':'未实名/审核中' %></td>
                 <td>
                     <%# if(item.status==0){ %>
-                    <em style="color: grey">未激活</em>
+                    <span style="color: grey">未激活</span>
                     <%# }else if(item.status==1){ %>
-                    <em style="color: #0e90d2">已激活</em>
+                    <span style="color: #0e90d2">已激活</span>
                     <%# }else if(item.status==2){ %>
-                    <em style="color: red">已出局</em>
+                    <span style="color: red">已出局</span>
                     <%# }%>
                 </td>
                 <td><% item.state?'正常':'禁用' %></td>
