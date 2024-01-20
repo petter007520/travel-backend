@@ -106,16 +106,11 @@
 
 
     </div>
-    @if($edit->id<4)
-    <h3 style="color:red;">修改动态文章分段动效需多回车输入|，才可分段</h3>
-     @endif
     @if(Cache::get('editor')=='markdown')
         <div id="container" class="editor">
             <textarea name="content" style="display:none;">{{$edit->content}}</textarea>
         </div>
         @include('markdown::encode',['editors'=>['container']])
-
-
 
     @elseif(Cache::get('editor')=='u-editor')
 
