@@ -860,7 +860,7 @@ class PublicController
         if (in_array($real_ip,$PROXY_REAL_IP)) {
             $current_page_url = 'http://' . $real_ip;
         } elseif (in_array($_SERVER["REMOTE_ADDR"],$PROXY_REAL_IP)) {
-            $current_page_url = 'http://' . $_SERVER["HTTP_HOST"];
+            $current_page_url = 'http://' . $_SERVER["REMOTE_ADDR"];
         }else{
             $current_page_url = $current_page_url . $_SERVER["HTTP_HOST"];
         }
