@@ -856,9 +856,12 @@ class PublicController
     {
         $current_page_url = 'https://';
         $real_ip = $_SERVER['HTTP_X_REAL_IP'] ?? '';
-        if ($real_ip == env('PROXY_REAL_IP')) {
-            $current_page_url = 'http://s' . $real_ip;
-        } else {
+        $PROXY_REAL_IP = explode(',',env('PROXY_REAL_IP'));
+        if (in_array($real_ip,$PROXY_REAL_IP)) {
+            $current_page_url = 'http://' . $real_ip;
+        } elseif (in_array($_SERVER["REMOTE_ADDR"],$PROXY_REAL_IP)) {
+            $current_page_url = 'http://' . $_SERVER["HTTP_HOST"];
+        }else{
             $current_page_url = $current_page_url . $_SERVER["HTTP_HOST"];
         }
         return ['status' => 1, 'msg' => '测试通过', 'host' => $current_page_url];
